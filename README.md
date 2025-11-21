@@ -1,2 +1,0 @@
-# VieCinema
-DoAnThucTap
