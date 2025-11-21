@@ -1,9 +1,9 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
 import { X } from "lucide-react";
+import api, { initCsrf } from "@/lib/api"; // ĐÃ THÊM DÒNG NÀY
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -37,6 +37,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
     try {
       if (isSignUp) {
+        // ĐĂNG KÝ: tạm giữ nguyên (sau này bạn làm thật cũng được)
         if (!fullName.trim()) {
           setError("Vui lòng nhập họ tên");
           setIsLoading(false);
@@ -64,9 +65,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1500));
-        console.log("[v0] Signup successful:", { fullName, email, phone });
         setSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
-
         setTimeout(() => {
           setFullName("");
           setEmail("");
@@ -77,6 +76,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
           setIsSignUp(false);
         }, 2000);
       } else {
+        // ĐĂNG NHẬP THẬT VỚI LARAVEL – ĐÃ SỬA HOÀN TOÀN
         if (!validateEmail(email)) {
           setError("Email không hợp lệ");
           setIsLoading(false);
@@ -88,19 +88,22 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
           return;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        console.log("[v0] Login attempt:", { email });
+        await initCsrf(); // Lấy cookie CSRF từ Laravel
+        await api.post("/login", { email, password }); // Gọi API login thật
+
         setSuccess("Đăng nhập thành công!");
 
         setTimeout(() => {
           setEmail("");
           setPassword("");
+          setError("");
           setSuccess("");
           onClose();
-        }, 1500);
+          window.location.reload(); // reload để cập nhật trạng thái đã login
+        }, 1000);
       }
-    } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Sai email hoặc mật khẩu");
     } finally {
       setIsLoading(false);
     }
@@ -142,7 +145,6 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   placeholder="Nguyễn Văn A"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">
                   Số điện thoại
