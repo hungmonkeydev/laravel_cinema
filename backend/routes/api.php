@@ -80,14 +80,29 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
 });
 
-// Định nghĩa tất cả các route chuẩn cho tài nguyên 'users' (người dùng).
-Route::apiResource('users', UserController::class);
+// 🔴 SECURITY FIX: Moved to admin routes group below
+// Route::apiResource('users', UserController::class);
+
 // API Đặt vé & Lấy link thanh toán
 Route::post('/booking/create', [BookingController::class, 'createBooking']);
 
 // API Webhook để Momo gọi lại (IPN)
 Route::post('/payment/momo-ipn', [BookingController::class, 'momoIpn']);
 
-// LƯU Ý: Nếu bạn dùng Route::apiResource('users', ...) cho ĐĂNG KÝ (store), 
-// bạn nên xóa hàm register ở trên và chỉ cần gọi POST /api/users.
-// Tuy nhiên, việc tạo route register/login riêng biệt là cách làm chuẩn hơn.
+// --- ADMIN ROUTES (Protected by auth:sanctum + admin middleware) ---
+Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureUserIsAdmin::class])->prefix('admin')->group(function () {
+
+    // Dashboard Statistics
+    Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index']);
+
+    // User Management (CRUD)
+    Route::apiResource('users', UserController::class);
+
+    // Movie Management (CRUD)
+    Route::apiResource('movies', App\Http\Controllers\Admin\MovieController::class);
+
+    // Booking Management (View only)
+    Route::get('/bookings', [BookingController::class, 'adminIndex']);
+    Route::get('/bookings/{id}', [BookingController::class, 'adminShow']);
+
+});

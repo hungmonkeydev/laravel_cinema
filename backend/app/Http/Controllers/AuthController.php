@@ -81,10 +81,18 @@ class AuthController extends Controller
 
         Auth::login($user);
 
+        // Create Sanctum token for API authentication
+        $token = $user->createToken('auth-token')->plainTextToken;
+
         return response()->json([
             'success' => true,
             'message' => 'Đăng nhập thành công',
-            'data' => $user->makeHidden(['password_hash', 'remember_token']),
+            'data' => [
+                'user' => $user->makeHidden(['password_hash', 'remember_token']),
+                'role' => $user->role,
+                'redirect_to' => $user->role === 'admin' ? '/admin' : '/',
+                'access_token' => $token,
+            ],
         ], 200);
     }
     /**
@@ -166,10 +174,18 @@ class AuthController extends Controller
         // Auto login
         Auth::login($user);
 
+        // Create Sanctum token for API authentication
+        $token = $user->createToken('auth-token')->plainTextToken;
+
         return response()->json([
             'success' => true,
             'message' => 'Xác thực thành công! Tài khoản đã được kích hoạt.',
-            'data' => $user->makeHidden(['password_hash', 'remember_token']),
+            'data' => [
+                'user' => $user->makeHidden(['password_hash', 'remember_token']),
+                'role' => $user->role,
+                'redirect_to' => $user->role === 'admin' ? '/admin' : '/',
+                'access_token' => $token,
+            ],
         ], 200);
     }
 

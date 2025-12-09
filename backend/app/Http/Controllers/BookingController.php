@@ -277,4 +277,85 @@ class BookingController extends Controller
 
         return $mySignature === $data['signature'];
     }
+
+    /**
+     * Get all bookings for admin (with user info)
+     */
+    public function adminIndex()
+    {
+        try {
+            $bookings = DB::table('bookings')
+                ->join('users', 'bookings.user_id', '=', 'users.user_id')
+                ->select(
+                    'bookings.booking_id',
+                    'bookings.booking_code',
+                    'bookings.status',
+                    'bookings.total_amount',
+                    'bookings.final_amount',
+                    'bookings.created_at',
+                    'bookings.updated_at',
+                    'users.full_name as user_name',
+                    'users.email as user_email',
+                    'users.phone as user_phone'
+                )
+                ->orderBy('bookings.created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $bookings,
+            ], 200);
+        } catch (\Exception $e) {
+            // Table doesn't exist yet, return empty array
+            return response()->json([
+                'success' => true,
+                'data' => [],
+            ], 200);
+        }
+    }
+
+    /**
+     * Get booking details for admin (with seats info)
+     */
+    public function adminShow($id)
+    {
+        try {
+            $booking = DB::table('bookings')
+                ->join('users', 'bookings.user_id', '=', 'users.user_id')
+                ->where('bookings.booking_id', $id)
+                ->select(
+                    'bookings.*',
+                    'users.full_name as user_name',
+                    'users.email as user_email',
+                    'users.phone as user_phone'
+                )
+                ->first();
+
+            if (!$booking) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Booking not found.'
+                ], 404);
+            }
+
+            // Get booking seats
+            $seats = DB::table('booking_seats')
+                ->join('seats', 'booking_seats.seat_id', '=', 'seats.seat_id')
+                ->where('booking_seats.booking_id', $id)
+                ->select('seats.*', 'booking_seats.price')
+                ->get();
+
+            $booking->seats = $seats;
+
+            return response()->json([
+                'success' => true,
+                'data' => $booking,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching booking: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

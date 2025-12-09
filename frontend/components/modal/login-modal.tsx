@@ -136,7 +136,12 @@ export default function LoginModal({
         console.log("👉 User tìm thấy:", userData);
 
         if (userData) {
+          // Extract role and redirect_to from response
+          const role = data.data?.role || userData.role || 'customer';
+          const redirectTo = data.data?.redirect_to || (role === 'admin' ? '/admin' : '/');
+
           localStorage.setItem("user_info", JSON.stringify(userData));
+          localStorage.setItem("user_role", role);
           if (token) localStorage.setItem("access_token", token);
 
           // Dispatch custom event to notify header component
@@ -148,6 +153,14 @@ export default function LoginModal({
           } else {
             console.warn("⚠️ Chưa truyền onLoginSuccess");
           }
+
+          setSuccess("Đăng nhập thành công!");
+
+          // Redirect based on role
+          setTimeout(() => {
+            window.location.href = redirectTo;
+          }, 1000);
+          return; // Don't execute the rest
         }
 
         setSuccess("Đăng nhập thành công!");
@@ -185,12 +198,26 @@ export default function LoginModal({
     window.location.href = `${backendUrl}/api/auth/google`;
   };
 
-  const handleOtpVerifySuccess = (user: any) => {
+  const handleOtpVerifySuccess = (user: any, responseData?: any) => {
+    // Extract role and redirect_to from response
+    const role = responseData?.role || user.role || 'customer';
+    const redirectTo = responseData?.redirect_to || (role === 'admin' ? '/admin' : '/');
+
+    // Store role
+    if (!localStorage.getItem("user_role")) {
+      localStorage.setItem("user_role", role);
+    }
+
     if (onLoginSuccess) {
       onLoginSuccess(user);
     }
     setShowOtpModal(false);
     onClose();
+
+    // Redirect based on role
+    setTimeout(() => {
+      window.location.href = redirectTo;
+    }, 500);
   };
 
   if (!isOpen) return null;

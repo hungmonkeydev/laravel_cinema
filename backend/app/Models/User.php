@@ -12,8 +12,8 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    // Primary key is 'id' (default Laravel convention)
-    // protected $primaryKey = 'user_id';
+    // Primary key is 'user_id' (custom)
+    protected $primaryKey = 'user_id';
 
     /**
      * The attributes that are mass assignable.
