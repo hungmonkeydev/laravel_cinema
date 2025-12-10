@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-export default function MockPaymentPage() {
+function MockPayment() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const order = searchParams?.get("order") ?? "";
@@ -179,5 +179,14 @@ export default function MockPaymentPage() {
         </div>
       )}
     </div>
+  );
+}
+
+
+export default function MockPaymentPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <MockPayment />
+    </Suspense>
   );
 }

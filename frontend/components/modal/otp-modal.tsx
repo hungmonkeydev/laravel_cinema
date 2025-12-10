@@ -23,7 +23,8 @@ export default function OtpModal({
   const [success, setSuccess] = useState("");
   const [countdown, setCountdown] = useState(600); // 10 minutes
   const [canResend, setCanResend] = useState(false);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  // initialize with fixed length array to avoid undefined slots
+  const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
 
   useEffect(() => {
     if (!isOpen) return;
@@ -65,7 +66,8 @@ export default function OtpModal({
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+  // use more specific event type for input elements
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
@@ -193,7 +195,7 @@ export default function OtpModal({
               {otp.map((digit, index) => (
                 <input
                   key={index}
-                  ref={(el) => (inputRefs.current[index] = el)}
+                  ref={(el) => { inputRefs.current[index] = el; }}
                   type="text"
                   inputMode="numeric"
                   maxLength={1}
