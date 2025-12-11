@@ -8,7 +8,6 @@ cmds = [
 
 [phases.build]
 cmds = [
-    # XÓA DÒNG 'php artisan config:cache' Ở ĐÂY
     'php artisan route:cache',
     'php artisan view:cache'
 ]
