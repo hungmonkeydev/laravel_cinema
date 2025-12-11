@@ -1,4 +1,4 @@
-[phases. setup]
+[phases.setup]
 nixPkgs = ['php83', 'php83Packages.composer']
 
 [phases.install]
@@ -8,10 +8,11 @@ cmds = [
 
 [phases.build]
 cmds = [
-    'php artisan config:cache',
+    # XÓA DÒNG 'php artisan config:cache' Ở ĐÂY
     'php artisan route:cache',
     'php artisan view:cache'
 ]
 
 [start]
-cmd = 'php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}'
+# Thêm 'php artisan config:clear' vào đầu để đảm bảo xóa cache cũ nếu có
+cmd = 'php artisan config:clear && php artisan migrate --force && php artisan db:seed --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}'
