@@ -195,8 +195,7 @@ export default function LoginModal({
   };
 
   const handleGoogleLogin = () => {
-    const backendUrl =
-      process.env.NEXT_PUBLIC_SERVER_API || "http://localhost:8000";
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL;
     window.location.href = `${backendUrl}/api/auth/google`;
   };
 

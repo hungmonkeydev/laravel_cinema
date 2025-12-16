@@ -2,9 +2,7 @@ import axios, { AxiosRequestConfig } from "axios";
 
 //  Đảm bảo biến môi trường NEXT_PUBLIC_SERVER_API được đặt trong .env.local:
 // Ví dụ: NEXT_PUBLIC_SERVER_API=http://127.0.0.1:8000
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_SERVER_API || "http://localhost:8000";
-
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL;
 // Base URL cho tất cả các request API (ví dụ: http://127.0.0.1:8000/api)
 const API_BASE_URL = `${BACKEND_URL}/api`;
 
@@ -31,7 +29,7 @@ export async function initCsrf() {
     console.log("✅ CSRF cookie initialized successfully.");
 
     // Wait a bit for cookie to be set
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   } catch (error) {
     console.error("❌ Failed to initialize CSRF cookie:", error);
     throw error;
@@ -48,10 +46,10 @@ api.interceptors.request.use(
     }
 
     // Thêm Bearer token nếu có trong localStorage
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('access_token');
-      if (token && !config.headers['Authorization']) {
-        config.headers['Authorization'] = `Bearer ${token}`;
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("access_token");
+      if (token && !config.headers["Authorization"]) {
+        config.headers["Authorization"] = `Bearer ${token}`;
       }
     }
 
@@ -62,7 +60,7 @@ api.interceptors.request.use(
       methodsToProtect.includes(config.method.toLowerCase())
     ) {
       // Try to get XSRF token from cookies
-      if (typeof document !== 'undefined') {
+      if (typeof document !== "undefined") {
         const xsrfToken = document.cookie
           .split("; ")
           .find((row) => row.startsWith("XSRF-TOKEN="))
