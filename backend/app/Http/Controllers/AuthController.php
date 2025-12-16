@@ -8,16 +8,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Laravel\Socialite\Facades\Socialite; // Thư viện Socialite
+use GuzzleHttp\Client; // Để tắt kiểm tra SSL (nếu cần dùng trong controller)
+use Illuminate\Support\Str; // Để tạo mật khẩu ngẫu nhiên
 
 class AuthController extends Controller
 {
     /**
      * Xử lý chức năng Đăng ký (Register)
-     * POST /api/register
      */
     public function register(Request $request)
     {
-        // SỬA ĐỔI: Validation sử dụng 'full_name'
         $validator = Validator::make($request->all(), [
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email|max:255',
@@ -33,7 +34,6 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Tạo và gửi OTP với registration data
         try {
             EmailVerification::createAndSend($request->email, [
                 'full_name' => $request->full_name,
@@ -61,7 +61,6 @@ class AuthController extends Controller
 
     /**
      * Xử lý chức năng Đăng nhập (Login)
-     * POST /api/login
      */
     public function login(Request $request)
     {
@@ -81,7 +80,6 @@ class AuthController extends Controller
 
         Auth::login($user);
 
-        // Create Sanctum token for API authentication
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
@@ -95,19 +93,17 @@ class AuthController extends Controller
             ],
         ], 200);
     }
+
     /**
      * Lấy thông tin người dùng đã xác thực
-     * GET /api/user
      */
     public function showAuthenticatedUser(Request $request)
     {
-        // Auth::user() được cung cấp bởi middleware 'auth:sanctum'
         return response()->json($request->user());
     }
 
     /**
      * Xử lý chức năng Đăng xuất (Logout)
-     * POST /api/logout
      */
     public function logout(Request $request)
     {
@@ -123,8 +119,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Verify OTP and complete registration
-     * POST /api/verify-otp
+     * Verify OTP
      */
     public function verifyOtp(Request $request)
     {
@@ -141,7 +136,6 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Verify OTP
         $verification = EmailVerification::verify($request->email, $request->otp);
 
         if (!$verification) {
@@ -151,7 +145,6 @@ class AuthController extends Controller
             ], 400);
         }
 
-        // Get registration data from verification record
         $pendingData = $verification->getRegistrationData();
 
         if (!$pendingData) {
@@ -161,7 +154,6 @@ class AuthController extends Controller
             ], 400);
         }
 
-        // Create user
         $user = User::create([
             'full_name' => $pendingData['full_name'],
             'email' => $pendingData['email'],
@@ -171,10 +163,8 @@ class AuthController extends Controller
             'email_verified_at' => now(),
         ]);
 
-        // Auto login
         Auth::login($user);
 
-        // Create Sanctum token for API authentication
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
@@ -191,7 +181,6 @@ class AuthController extends Controller
 
     /**
      * Resend OTP
-     * POST /api/resend-otp
      */
     public function resendOtp(Request $request)
     {
@@ -220,6 +209,62 @@ class AuthController extends Controller
                 'message' => 'Không thể gửi email. Vui lòng thử lại sau.',
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    // --- PHẦN GOOGLE LOGIN (ĐÃ SỬA LỖI) ---
+
+    /**
+     * Bắt đầu đăng nhập Google (Thêm hàm này nếu chưa có)
+     */
+    public function redirectToGoogle()
+    {
+        // Nếu bạn đã cấu hình 'guzzle' => ['verify' => false] trong config/services.php
+        // thì không cần dòng setHttpClient ở đây nữa.
+        return Socialite::driver('google')
+            ->stateless()
+            ->redirect();
+    }
+
+    /**
+     * Xử lý Callback từ Google
+     */
+    public function handleGoogleCallback()
+    {
+        try {
+            // Lấy thông tin user từ Google
+            // Lưu ý: Nếu chưa config tắt SSL trong services.php thì dùng:
+            // ->setHttpClient(new Client(['verify' => false]))->stateless()->user();
+            $googleUser = Socialite::driver('google')->stateless()->user();
+
+            // Tìm user trong DB bằng email
+            $user = User::where('email', $googleUser->getEmail())->first();
+
+            if (!$user) {
+                // Nếu chưa có thì tạo mới
+                $user = User::create([
+                    'full_name' => $googleUser->getName(),
+                    'email' => $googleUser->getEmail(),
+                    'password' => bcrypt(Str::random(16)), // Mật khẩu ngẫu nhiên
+                    'role' => 'customer',
+                    'email_verified_at' => now(), // Google đã xác thực
+                ]);
+            }
+
+            // Đăng nhập user
+            Auth::login($user);
+
+            // Tạo token Sanctum
+            $token = $user->createToken('google-auth-token')->plainTextToken;
+
+            // Chuyển hướng về Frontend (React) kèm theo Token
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+
+            return redirect()->to("$frontendUrl/auth/callback?login=success&token=$token");
+        } catch (\Exception $e) {
+            // Nếu lỗi thì chuyển về Frontend kèm thông báo lỗi
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+            return redirect()->to("$frontendUrl/auth/callback?login=error&message=" . urlencode($e->getMessage()));
         }
     }
 }

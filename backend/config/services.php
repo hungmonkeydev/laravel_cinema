@@ -39,6 +39,11 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URI'),
+
+        // THÊM DÒNG NÀY ĐỂ TẮT CHECK SSL CHO GOOGLE
+        'guzzle' => [
+            'verify' => false,
+        ],
     ],
 
 ];

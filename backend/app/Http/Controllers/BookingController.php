@@ -14,19 +14,28 @@ class BookingController extends Controller
     private $partnerCode;
     private $accessKey;
     private $secretKey;
+    private $vnpTmnCode;
+    private $vnpHashSecret;
+    private $vnpUrl;
+    private $vnpReturnUrl;
 
     public function __construct()
     {
         $this->partnerCode = env('MOMO_PARTNER_CODE', 'MOMO_PARTNER_CODE');
         $this->accessKey = env('MOMO_ACCESS_KEY', 'MOMO_ACCESS_KEY');
         $this->secretKey = env('MOMO_SECRET_KEY', 'MOMO_SECRET_KEY');
+        // VNPAY config
+        $this->vnpTmnCode = env('VNPAY_TMN_CODE', 'VNPAY_TMN_CODE');
+        $this->vnpHashSecret = env('VNPAY_HASH_SECRET', 'VNPAY_HASH_SECRET');
+        $this->vnpUrl = env('VNPAY_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html');
+        $this->vnpReturnUrl = env('VNPAY_RETURN_URL', 'http://localhost:3000/booking-success');
     }
 
     public function createBooking(Request $request)
     {
         $request->validate([
             'user_id' => 'required|integer',
-            'showtime_id' => 'required|integer|exists:showtimes,showtime_id',
+            'showtime_id' => 'required|integer',
             'seat_ids' => 'required|array|min:1',
             'seat_ids.*' => 'integer'
         ]);
@@ -61,7 +70,12 @@ class BookingController extends Controller
                 }
 
                 $showtime = DB::table('showtimes')->where('showtime_id', $showtimeId)->first();
-                $basePrice = $showtime->base_price;
+
+                if (!$showtime) {
+                    return response()->json(['message' => 'Showtime not found.'], 404);
+                }
+
+                $basePrice = $showtime->base_price ?? 0;
                 $totalAmount = $basePrice * count($seatIds);
 
                 // Tạo mã đơn hàng (Dùng luôn mã này gửi qua Momo để dễ tìm lại)
@@ -99,22 +113,32 @@ class BookingController extends Controller
                     );
                 }
 
-                // 4. GỌI MOMO (Dùng $bookingCode làm orderId)
-                $momoResponse = $this->createMomoPayment($bookingCode, $totalAmount, "Thanh toan ve " . $bookingCode);
-                $payUrl = is_array($momoResponse) ? ($momoResponse['payUrl'] ?? null) : null;
+                // 4. GỌI PAYMENT GATEWAY THEO payment_method
+                $paymentMethod = request()->input('payment_method', 'momo');
+                $payUrl = null;
+                $gatewayResponse = null;
 
-                // Nếu không có payUrl, cho phép trả mock payUrl khi đang dev hoặc khi env bật mock
-                $useMock = env('MOMO_USE_MOCK', false);
-                if (empty($payUrl) && ($useMock || app()->environment('local'))) {
-                    $mockBase = env('MOMO_MOCK_PAYURL', 'http://localhost:3000/mock-payment');
-                    $payUrl = $mockBase . '?order=' . urlencode($bookingCode) . '&amount=' . urlencode((string)$totalAmount);
+                if ($paymentMethod === 'vnpay') {
+                    $gatewayResponse = $this->createVnpayPayment($bookingCode, $totalAmount, "Thanh toan ve " . $bookingCode);
+                    $payUrl = is_array($gatewayResponse) ? ($gatewayResponse['payUrl'] ?? null) : null;
+                } else {
+                    $gatewayResponse = $this->createMomoPayment($bookingCode, $totalAmount, "Thanh toan ve " . $bookingCode);
+                    $payUrl = is_array($gatewayResponse) ? ($gatewayResponse['payUrl'] ?? null) : null;
+
+                    // Nếu không có payUrl, cho phép trả mock payUrl khi đang dev hoặc khi env bật mock
+                    $useMock = env('MOMO_USE_MOCK', false);
+                    if (empty($payUrl) && ($useMock || app()->environment('local'))) {
+                        $mockBase = env('MOMO_MOCK_PAYURL', 'http://localhost:3000/mock-payment');
+                        $payUrl = $mockBase . '?order=' . urlencode($bookingCode) . '&amount=' . urlencode((string)$totalAmount);
+                    }
                 }
 
                 return response()->json([
                     'status' => 'success',
                     'booking_id' => $bookingId,
                     'payUrl' => $payUrl,
-                    'momo_response' => $momoResponse
+                    'gateway_response' => $gatewayResponse,
+                    'payment_method' => $paymentMethod,
                 ]);
             });
         } catch (\Exception $e) {
@@ -253,25 +277,73 @@ class BookingController extends Controller
         }
     }
 
+    // Hàm tạo link thanh toán VNPAY
+    private function createVnpayPayment($orderId, $amount, $orderInfo)
+    {
+        // amount: VND (integer). VNPAY often expects amount in smallest unit; multiply by 100 to be safe if needed.
+        $vnpAmount = (string) ($amount * 100);
+
+        $vnpParams = [
+            'vnp_Version' => '2.1.0',
+            'vnp_TmnCode' => $this->vnpTmnCode,
+            'vnp_Amount' => $vnpAmount,
+            'vnp_Command' => 'pay',
+            'vnp_CreateDate' => Carbon::now()->format('YmdHis'),
+            'vnp_CurrCode' => 'VND',
+            'vnp_IpAddr' => request()->ip(),
+            'vnp_Locale' => 'vn',
+            'vnp_OrderInfo' => $orderInfo,
+            'vnp_OrderType' => 'other',
+            'vnp_ReturnUrl' => $this->vnpReturnUrl,
+            'vnp_TxnRef' => $orderId,
+        ];
+
+        // Sort params by key
+        ksort($vnpParams);
+
+        $query = http_build_query($vnpParams);
+        // VNPAY requires hash of the query string
+        $hashData = urldecode($query);
+        $secureHash = hash_hmac('sha512', $hashData, $this->vnpHashSecret);
+
+        $payUrl = rtrim($this->vnpUrl, '?') . '?' . $query . '&vnp_SecureHash=' . $secureHash;
+
+        return ['payUrl' => $payUrl, 'params' => $vnpParams];
+    }
+
     // Hàm kiểm tra chữ ký bảo mật từ Momo gửi về
     private function checkSignature($data)
     {
         if (!isset($data['signature'])) return false;
 
+        // Use null coalescing to avoid undefined index notices
+        $amount = $data['amount'] ?? '';
+        $extraData = $data['extraData'] ?? '';
+        $message = $data['message'] ?? '';
+        $orderId = $data['orderId'] ?? '';
+        $orderInfo = $data['orderInfo'] ?? '';
+        $orderType = $data['orderType'] ?? '';
+        $partnerCode = $data['partnerCode'] ?? '';
+        $payType = $data['payType'] ?? '';
+        $requestId = $data['requestId'] ?? '';
+        $responseTime = $data['responseTime'] ?? '';
+        $resultCode = $data['resultCode'] ?? '';
+        $transId = $data['transId'] ?? '';
+
         // Dữ liệu Momo gửi về (cần sắp xếp đúng thứ tự này để hash)
         $rawHash = "accessKey=" . $this->accessKey .
-            "&amount=" . $data['amount'] .
-            "&extraData=" . $data['extraData'] .
-            "&message=" . $data['message'] .
-            "&orderId=" . $data['orderId'] .
-            "&orderInfo=" . $data['orderInfo'] .
-            "&orderType=" . $data['orderType'] .
-            "&partnerCode=" . $data['partnerCode'] .
-            "&payType=" . $data['payType'] .
-            "&requestId=" . $data['requestId'] .
-            "&responseTime=" . $data['responseTime'] .
-            "&resultCode=" . $data['resultCode'] .
-            "&transId=" . $data['transId'];
+            "&amount=" . $amount .
+            "&extraData=" . $extraData .
+            "&message=" . $message .
+            "&orderId=" . $orderId .
+            "&orderInfo=" . $orderInfo .
+            "&orderType=" . $orderType .
+            "&partnerCode=" . $partnerCode .
+            "&payType=" . $payType .
+            "&requestId=" . $requestId .
+            "&responseTime=" . $responseTime .
+            "&resultCode=" . $resultCode .
+            "&transId=" . $transId;
 
         $mySignature = hash_hmac("sha256", $rawHash, $this->secretKey);
 

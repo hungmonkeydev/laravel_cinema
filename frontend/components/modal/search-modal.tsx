@@ -1,134 +1,42 @@
 "use client";
 
-import { useState } from "react";
-import { X, Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Search, Loader2 } from "lucide-react";
 import MovieModal from "@/components/modal/movie-modal";
 
-const movies = [
-  {
-    id: 1,
-    title: "Trái Tim Quê Quán",
-    rating: 7.1,
-    image: "/vietnamese-movie-poster-drama.jpg",
-    badge: "T13",
-    genre: "Drama",
-    duration: "120 min",
-    director: "Nguyễn Văn A",
-    description: "Một câu chuyện cảm động về tình yêu và gia đình ở miền quê.",
-    releaseDate: "2024-11-15",
-  },
-  {
-    id: 2,
-    title: "Quái Thú Về Hình: Vùng Đất Chết",
-    rating: 9.2,
-    image: "/monster-movie-poster-action.jpg",
-    badge: "T16",
-    genre: "Action",
-    duration: "135 min",
-    director: "Trần Đạo Vương",
-    description: "Hành động kịch tính với những quái thú đáng sợ.",
-    releaseDate: "2024-11-08",
-  },
-  {
-    id: 3,
-    title: "Thái Chiều Tây",
-    rating: 7.2,
-    image: "/thai-movie-poster-horror.jpg",
-    badge: "T18",
-    genre: "Horror",
-    duration: "110 min",
-    director: "Vũ Thị B",
-    description: "Phim kinh dị độc lập từ Thái Lan.",
-    releaseDate: "2024-11-22",
-  },
-  {
-    id: 4,
-    title: "Tình Người Duyên Ma 2025",
-    rating: 7.4,
-    image: "/fantasy-movie-poster-romance.jpg",
-    badge: "T13",
-    genre: "Romance",
-    duration: "125 min",
-    director: "Phạm C",
-    description: "Tình yêu kỳ ảo giữa người và ma.",
-    releaseDate: "2024-11-29",
-  },
-  {
-    id: 5,
-    title: "Mộ Đom Đóm",
-    rating: 9.0,
-    image: "/animated-movie-poster.png",
-    badge: "T13",
-    genre: "Animation",
-    duration: "100 min",
-    director: "Phan D",
-    description: "Phim hoạt hình cảm động về tình bạn.",
-    releaseDate: "2024-11-01",
-  },
-  {
-    id: 6,
-    title: "Phá Đảm: Sinh Nhật Mẹ",
-    rating: 7.8,
-    image: "/comedy-movie-poster.png",
-    badge: "T18",
-    genre: "Comedy",
-    duration: "115 min",
-    director: "Lê E",
-    description: "Phim hài hước về một bữa tiệc sinh nhật.",
-    releaseDate: "2024-11-05",
-  },
-  {
-    id: 7,
-    title: "Cực Vàng Của Ngoài",
-    rating: 8.3,
-    image: "/drama-movie-poster.png",
-    badge: "T16",
-    genre: "Drama",
-    duration: "140 min",
-    director: "Võ F",
-    description: "Chuyên tâm sâu sắc về cuộc sống.",
-    releaseDate: "2024-10-25",
-  },
-  {
-    id: 8,
-    title: "Cái Má",
-    rating: 7.0,
-    image: "/horror-movie-poster.png",
-    badge: "T18",
-    genre: "Horror",
-    duration: "105 min",
-    director: "Hoàng G",
-    description: "Kinh dị tâm lý về mẹ và con.",
-    releaseDate: "2024-11-12",
-  },
-];
+// 1. DÙNG CHUNG INTERFACE VỚI MOVIE GRID
+interface MovieType {
+  id?: number;
+  movie_id?: number;
+  title: string;
+  rating: number | string | null;
+  poster_url?: string | null;
+  image?: string | null;
+  badge: string | null;
+  genre: string | null;
+  duration: number | string | null;
+  director: string | null;
+  description: string | null;
+  releaseDate?: string;
+  release_date?: string;
+}
 
 interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-interface MovieType {
-  id: number;
-  title: string;
-  rating: number;
-  image: string;
-  badge: string;
-  genre: string;
-  duration: string;
-  director: string;
-  description: string;
-  releaseDate: string;
-}
-
 export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Array<{ id: number; title: string }>>(
-    []
-  );
+  const [results, setResults] = useState<MovieType[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<MovieType | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSearch = (value: string) => {
+  // 2. CẤU HÌNH API
+  const API_BASE_URL = "http://127.0.0.1:8000";
+
+  // Hàm gọi API tìm kiếm
+  const handleSearch = async (value: string) => {
     setQuery(value);
 
     if (value.trim().length === 0) {
@@ -136,20 +44,33 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       return;
     }
 
-    const movieTitles = movies.map((m) => ({ id: m.id, title: m.title }));
-    const filtered = movieTitles.filter((movie) =>
-      movie.title.toLowerCase().includes(value.toLowerCase())
-    );
-    setResults(filtered);
+    setLoading(true);
+    try {
+      // Gọi API tìm kiếm của Laravel
+      const res = await fetch(
+        `${API_BASE_URL}/api/movies/search?query=${value}`
+      );
+      const data = await res.json();
+
+      if (Array.isArray(data)) {
+        setResults(data);
+      } else if (data.data && Array.isArray(data.data)) {
+        setResults(data.data);
+      } else {
+        setResults([]);
+      }
+    } catch (error) {
+      console.error("Lỗi tìm kiếm:", error);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSelectMovie = (movieId: number) => {
-    const movie = movies.find((m) => m.id === movieId);
-    if (movie) {
-      setSelectedMovie(movie);
-      setQuery("");
-      setResults([]);
-    }
+  const handleSelectMovie = (movie: MovieType) => {
+    setSelectedMovie(movie);
+    setQuery("");
+    setResults([]);
   };
 
   if (!isOpen) return null;
@@ -160,7 +81,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         movie={selectedMovie}
         onClose={() => {
           setSelectedMovie(null);
-          onClose();
+          onClose(); // Đóng luôn search modal nếu muốn
         }}
       />
     );
@@ -168,52 +89,91 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-40 flex items-start justify-center pt-20"
+      className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center pt-24 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="bg-card rounded-lg shadow-lg w-full max-w-md mx-4"
+        className="bg-card rounded-xl shadow-2xl w-full max-w-lg mx-4 border border-border"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 border-b border-border flex items-center justify-between">
           <h3 className="text-lg font-bold text-foreground">Tìm kiếm phim</h3>
-          <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-muted rounded-full transition"
+          >
             <X size={20} />
           </button>
         </div>
 
-        <div className="p-4 space-y-3">
-          <div className="flex items-center gap-2 bg-muted rounded-lg px-3 py-2">
-            <Search size={18} className="text-muted-foreground" />
+        <div className="p-4 space-y-4">
+          <div className="flex items-center gap-3 bg-muted/50 rounded-xl px-4 py-3 border border-transparent focus-within:border-primary transition-colors">
+            <Search size={20} className="text-muted-foreground" />
             <input
               type="text"
-              placeholder="Nhập tên phim..."
+              placeholder="Nhập tên phim muốn tìm..."
               value={query}
               onChange={(e) => handleSearch(e.target.value)}
               autoFocus
-              className="flex-1 bg-transparent outline-none text-foreground placeholder-muted-foreground"
+              className="flex-1 bg-transparent outline-none text-foreground placeholder-muted-foreground text-base"
             />
+            {loading && (
+              <Loader2 size={18} className="animate-spin text-primary" />
+            )}
           </div>
 
-          <div className="max-h-96 overflow-y-auto space-y-2">
+          <div className="max-h-[60vh] overflow-y-auto space-y-1 pr-1 custom-scrollbar">
             {results.length > 0 ? (
-              results.map((movie) => (
-                <button
-                  key={movie.id}
-                  onClick={() => handleSelectMovie(movie.id)}
-                  className="w-full text-left px-3 py-2 hover:bg-muted rounded-lg transition text-foreground"
-                >
-                  {movie.title}
-                </button>
-              ))
-            ) : query ? (
-              <p className="text-center text-muted-foreground py-8">
-                Không tìm thấy phim nào
-              </p>
+              results.map((movie) => {
+                // Xử lý ảnh nhỏ để hiển thị thumbnail
+                const posterPath = movie.poster_url || movie.image;
+                const imageUrl = posterPath
+                  ? posterPath.startsWith("http")
+                    ? posterPath
+                    : `${API_BASE_URL}/${
+                        posterPath.startsWith("/")
+                          ? posterPath.substring(1)
+                          : posterPath
+                      }`
+                  : "/placeholder.svg";
+
+                return (
+                  <button
+                    key={movie.id || movie.movie_id}
+                    onClick={() => handleSelectMovie(movie)}
+                    className="w-full flex items-center gap-4 p-3 hover:bg-muted/50 rounded-lg transition group text-left"
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={movie.title}
+                      className="w-12 h-16 object-cover rounded bg-muted"
+                      onError={(e) => {
+                        e.currentTarget.src = "/placeholder.svg";
+                      }}
+                    />
+                    <div>
+                      <h4 className="font-semibold text-foreground group-hover:text-primary transition">
+                        {movie.title}
+                      </h4>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                        {movie.genre || "Đang cập nhật"} •{" "}
+                        {movie.duration ? `${movie.duration} phút` : ""}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })
+            ) : query && !loading ? (
+              <div className="text-center py-8">
+                <span className="text-4xl block mb-2">🤔</span>
+                <p className="text-muted-foreground">
+                  Không tìm thấy phim nào phù hợp.
+                </p>
+              </div>
             ) : (
-              <p className="text-center text-muted-foreground py-8">
-                Nhập tên phim để tìm kiếm
-              </p>
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                Nhập từ khóa để bắt đầu tìm kiếm
+              </div>
             )}
           </div>
         </div>

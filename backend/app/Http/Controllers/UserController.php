@@ -65,9 +65,9 @@ class UserController extends Controller
                 'full_name' => $validatedData['full_name'],
                 'email' => $validatedData['email'],
 
-                // *** THAY ĐỔI TẠI ĐÂY ***
-                // Chỉ truyền mật khẩu dạng chuỗi, Model Casts sẽ tự động Hash nó
-                'password_hash' => $validatedData['password'],
+                // Gửi trường `password` để Setter `setPasswordAttribute` ở Model
+                // sẽ băm và lưu vào `password_hash` tự động.
+                'password' => $validatedData['password'],
 
                 'phone' => $validatedData['phone'] ?? null,
                 'role' => $validatedData['role'] ?? 'customer',
@@ -151,9 +151,8 @@ class UserController extends Controller
 
         // Xử lý mật khẩu (Chỉ cập nhật nếu người dùng cung cấp mật khẩu mới)
         if ($request->filled('password')) {
-            // Do bạn đã cấu hình 'password_hash' => 'hashed' trong Model User, 
-            // Laravel sẽ tự động băm giá trị này.
-            $updateData['password_hash'] = $request->input('password');
+            // Gán vào trường `password` để Setter ở Model xử lý hash.
+            $updateData['password'] = $request->input('password');
         }
 
         // 4. Cập nhật bản ghi
