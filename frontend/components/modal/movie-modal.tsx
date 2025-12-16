@@ -5,8 +5,7 @@ import { X, MapPin, ChevronLeft } from "lucide-react";
 import SeatBooking from "@/components/booking/seat-booking";
 
 // 1. CẤU HÌNH DOMAIN BACKEND
-const API_BASE_URL = "http://127.0.0.1:8000";
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 // 2. INTERFACE
 export interface Movie {
   id?: number;

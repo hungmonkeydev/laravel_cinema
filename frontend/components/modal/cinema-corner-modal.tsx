@@ -23,7 +23,7 @@ export default function CinemaCornerModal({
       try {
         // Thay đổi đường dẫn này nếu port của bạn khác 8000
         const res = await fetch(
-          `http://127.0.0.1:8000/api/cinema-corner/${section}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/cinema-corner/${section}`
         );
         const result = await res.json();
         setData(result);

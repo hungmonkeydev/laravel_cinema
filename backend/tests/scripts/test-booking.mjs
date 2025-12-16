@@ -1,7 +1,6 @@
 import { decode } from "querystring";
 
-const BASE = process.env.BACKEND || "http://127.0.0.1:8000";
-
+const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 function parseSetCookie(setCookie) {
   // setCookie may be an array or a single string
   const arr = Array.isArray(setCookie) ? setCookie : [setCookie];

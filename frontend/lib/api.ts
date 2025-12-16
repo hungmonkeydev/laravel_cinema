@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig } from "axios";
 
-// 🌟 Đảm bảo biến môi trường NEXT_PUBLIC_SERVER_API được đặt trong .env.local:
+//  Đảm bảo biến môi trường NEXT_PUBLIC_SERVER_API được đặt trong .env.local:
 // Ví dụ: NEXT_PUBLIC_SERVER_API=http://127.0.0.1:8000
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_SERVER_API || "http://localhost:8000";
@@ -40,7 +40,7 @@ export async function initCsrf() {
 
 // Interceptor: Tự động thêm CSRF token và Authorization header
 api.interceptors.request.use(
-  // 🌟 ĐÃ SỬA: Thay thế AxiosRequestConfig bằng 'any' để tránh xung đột kiểu nội bộ của Axios
+  //  ĐÃ SỬA: Thay thế AxiosRequestConfig bằng 'any' để tránh xung đột kiểu nội bộ của Axios
   (config: any) => {
     // KHẮC PHỤC LỖI: Đảm bảo headers tồn tại
     if (!config.headers) {

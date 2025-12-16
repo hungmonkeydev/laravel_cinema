@@ -15,8 +15,7 @@ import CinemaCornerModal from "@/components/modal/cinema-corner-modal";
 import MovieModal from "@/components/modal/movie-modal";
 
 // 1. Cấu hình đường dẫn API (Backend Laravel)
-const API_BASE_URL = "http://127.0.0.1:8000";
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 // 2. Interface khớp với Controller Laravel
 export interface Movie {
   id: number;

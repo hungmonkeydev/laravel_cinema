@@ -29,11 +29,11 @@ export default function SeatBooking({
   onBack,
 }: SeatBookingProps) {
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
-  
+
   // State lưu danh sách giờ lấy từ API
-  const [showtimes, setShowtimes] = useState<string[]>([]); 
-  const [selectedTime, setSelectedTime] = useState<string>(""); 
-  
+  const [showtimes, setShowtimes] = useState<string[]>([]);
+  const [selectedTime, setSelectedTime] = useState<string>("");
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingTime, setIsLoadingTime] = useState(true); // Biến để hiện loading khi đang tải giờ
 
@@ -44,12 +44,16 @@ export default function SeatBooking({
       try {
         // Gọi API Laravel mà bạn vừa tạo
         // encodeURIComponent(cinema) để xử lý tên rạp có dấu/khoảng trắng
-        const res = await fetch(`http://127.0.0.1:8000/api/showtimes?movie_id=${movie.id}&cinema=${encodeURIComponent(cinema)}`);
-        
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/showtimes?movie_id=${
+            movie.id
+          }&cinema=${encodeURIComponent(cinema)}`
+        );
+
         if (!res.ok) throw new Error("Lỗi kết nối");
-        
+
         const data = await res.json();
-        
+
         if (Array.isArray(data)) {
           setShowtimes(data);
           // Mặc định chọn giờ đầu tiên nếu có
@@ -87,19 +91,22 @@ export default function SeatBooking({
     if (selectedSeats.length === 0) return;
     setIsProcessing(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/vnpay_payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          order_total: totalPrice,
-          order_desc: `Vé ${movie.title} - ${selectedTime} - ${cinema}`,
-          language: "vn",
-          seats: selectedSeats,
-          movie_id: movie.id,
-          cinema: cinema,
-          showtime: selectedTime,
-        }),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/vnpay_payment`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            order_total: totalPrice,
+            order_desc: `Vé ${movie.title} - ${selectedTime} - ${cinema}`,
+            language: "vn",
+            seats: selectedSeats,
+            movie_id: movie.id,
+            cinema: cinema,
+            showtime: selectedTime,
+          }),
+        }
+      );
       const data = await response.json();
       if (data.code === "00" && data.data) {
         window.location.href = data.data;
@@ -142,20 +149,22 @@ export default function SeatBooking({
           <p className="text-sm font-semibold mb-3 text-center text-muted-foreground">
             Chọn suất chiếu
           </p>
-          
+
           {isLoadingTime ? (
-             <div className="flex justify-center py-4"><Loader2 className="animate-spin text-primary"/></div>
+            <div className="flex justify-center py-4">
+              <Loader2 className="animate-spin text-primary" />
+            </div>
           ) : showtimes.length === 0 ? (
-             <div className="text-center text-red-500 text-sm py-2 bg-red-50 rounded-lg border border-red-100 mx-4">
-                Hiện tại rạp này chưa có suất chiếu nào.
-             </div>
+            <div className="text-center text-red-500 text-sm py-2 bg-red-50 rounded-lg border border-red-100 mx-4">
+              Hiện tại rạp này chưa có suất chiếu nào.
+            </div>
           ) : (
-             <div className="flex gap-3 overflow-x-auto pb-2 px-4 no-scrollbar justify-start md:justify-center snap-x">
-                {showtimes.map((time) => (
-                  <button
-                    key={time}
-                    onClick={() => setSelectedTime(time)}
-                    className={`
+            <div className="flex gap-3 overflow-x-auto pb-2 px-4 no-scrollbar justify-start md:justify-center snap-x">
+              {showtimes.map((time) => (
+                <button
+                  key={time}
+                  onClick={() => setSelectedTime(time)}
+                  className={`
                       px-4 py-2 rounded-xl text-sm font-bold border whitespace-nowrap snap-center transition-all
                       ${
                         selectedTime === time
@@ -163,11 +172,11 @@ export default function SeatBooking({
                           : "bg-background border-border hover:border-primary/50 text-muted-foreground"
                       }
                     `}
-                  >
-                    {time}
-                  </button>
-                ))}
-             </div>
+                >
+                  {time}
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
@@ -218,9 +227,17 @@ export default function SeatBooking({
 
         {/* Chú thích ghế (Giữ nguyên) */}
         <div className="flex justify-center flex-wrap gap-4 text-xs text-muted-foreground pb-4">
-           <div className="flex items-center gap-2"><div className="w-4 h-4 rounded border border-border bg-background"></div>Thường</div>
-           <div className="flex items-center gap-2"><div className="w-4 h-4 rounded border border-purple-500/50 bg-purple-500/10"></div>VIP</div>
-           <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-primary"></div>Đang chọn</div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded border border-border bg-background"></div>
+            Thường
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded border border-purple-500/50 bg-purple-500/10"></div>
+            VIP
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-primary"></div>Đang chọn
+          </div>
         </div>
       </div>
 

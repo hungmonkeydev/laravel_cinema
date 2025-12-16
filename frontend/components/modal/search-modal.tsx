@@ -33,8 +33,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [loading, setLoading] = useState(false);
 
   // 2. CẤU HÌNH API
-  const API_BASE_URL = "http://127.0.0.1:8000";
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   // Hàm gọi API tìm kiếm
   const handleSearch = async (value: string) => {
     setQuery(value);

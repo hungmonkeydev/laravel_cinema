@@ -37,8 +37,7 @@ export default function MovieGrid() {
   const [favorites, setFavorites] = useState<number[]>([]);
 
   // 2. CẤU HÌNH API
-  const API_BASE_URL = "http://127.0.0.1:8000";
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   // 3. HÀM XỬ LÝ ẢNH CHUẨN
   const getImageUrl = (path?: string | null) => {
     if (!path) return "/placeholder.svg";
