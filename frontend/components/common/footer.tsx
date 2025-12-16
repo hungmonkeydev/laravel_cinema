@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
             <h3 className="font-bold text-lg text-foreground mb-4">
-              Galaxy Cinema
+              Vie Cinema
             </h3>
             <p className="text-muted-foreground">
               Nền tảng bán vé xem phim trực tuyến hàng đầu Việt Nam.
