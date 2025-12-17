@@ -44,7 +44,7 @@ return [
         // SendGrid API (KHUYẾN NGHỊ)
         'sendgrid' => [
             'transport' => 'sendgrid',
-            'dsn' => env('SENDGRID_DSN'),
+            'api_key' => env('SENDGRID_API_KEY'),
         ],
 
         'ses' => [
