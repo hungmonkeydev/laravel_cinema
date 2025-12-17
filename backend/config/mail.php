@@ -25,16 +25,15 @@ return [
     'mailers' => [
         'smtp' => [
             'transport' => 'smtp',
-            'host' => env('MAIL_HOST', 'smtp.mailgun.org'),
-            'port' => env('MAIL_PORT', 587),
-            'encryption' => env('MAIL_ENCRYPTION', 'tls'),
+            'host' => env('MAIL_HOST', 'smtp.gmail.com'), // Thay mailgun thành gmail làm mặc định
+            'port' => env('MAIL_PORT', 465),            // Sửa port mặc định thành 465
+            'encryption' => env('MAIL_ENCRYPTION', 'ssl'), // Sửa mã hóa mặc định thành ssl
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN'),
             
-            // 👇 ĐOẠN CODE QUAN TRỌNG ĐÃ ĐƯỢC THÊM VÀO ĐÂY 👇
-            // Giúp Railway bỏ qua lỗi kiểm tra chứng chỉ SSL khắt khe của Google
+            // 👇 ĐOẠN CODE QUAN TRỌNG: Stream Fix (Giữ nguyên)
             'stream' => [
                 'ssl' => [
                     'allow_self_signed' => true,
@@ -44,6 +43,8 @@ return [
             ],
             // 👆 KẾT THÚC ĐOẠN SỬA
         ],
+
+        // ... (Các cấu hình mailer khác giữ nguyên)
 
         'ses' => [
             'transport' => 'ses',
@@ -84,9 +85,6 @@ return [
     |--------------------------------------------------------------------------
     | Global "From" Address
     |--------------------------------------------------------------------------
-    |
-    | Địa chỉ gửi mặc định (Sẽ lấy từ biến môi trường Railway)
-    |
     */
 
     'from' => [
