@@ -26,3 +26,11 @@ Route::get('/clear-cache', function () {
     Artisan::call('cache:clear');
     return '<h1>✅ Đã xóa sạch Cache thành công! (Config, Route, View)</h1>';
 });
+Route::get('/check-mail-config', function () {
+    return [
+        'host' => config('mail.mailers.smtp.host'),
+        'port' => config('mail.mailers.smtp.port'),
+        'encryption' => config('mail.mailers.smtp.encryption'),
+        // Không hiện mật khẩu để bảo mật
+    ];
+});
