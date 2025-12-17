@@ -23,7 +23,7 @@ return [
     'mailers' => [
         'smtp' => [
             'transport' => 'smtp',
-            'host' => env('MAIL_HOST', 'smtp.sendgrid.net'),
+            'host' => env('MAIL_HOST', 'smtp.mailgun.org'),
             'port' => env('MAIL_PORT', 587),
             'encryption' => env('MAIL_ENCRYPTION', 'tls'),
             'username' => env('MAIL_USERNAME'),
@@ -43,10 +43,10 @@ return [
         // SendGrid API (KHUYẾN NGHỊ)
         'sendgrid' => [
             'transport' => 'smtp',
-            'host' => 'smtp.sendgrid.net',
-            'port' => 587,
-            'encryption' => 'tls',
-            'username' => 'apikey',
+            'host' => env('MAIL_HOST', 'smtp.sendgrid.net'),
+            'port' => env('MAIL_PORT', 587),
+            'encryption' => env('MAIL_ENCRYPTION', 'tls'),
+            'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
         ],
