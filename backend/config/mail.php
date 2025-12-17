@@ -7,20 +7,22 @@ return [
     | Default Mailer
     |--------------------------------------------------------------------------
     |
-    | Sử dụng SendGrid API thay vì SMTP
+    | Mặc định sẽ lấy từ file .env (MAIL_MAILER).
+    | Nếu file .env không có, nó sẽ tự động dùng 'sendgrid'.
     |
     */
 
-    'default' => env('MAIL_MAILER', 'smtp'), /*
+    'default' => env('MAIL_MAILER', 'sendgrid'),
+
+    /*
     |--------------------------------------------------------------------------
     | Mailer Configurations
     |--------------------------------------------------------------------------
-    |
-    | Cấu hình các driver gửi mail khác nhau.
-    |
     */
 
     'mailers' => [
+        
+        // Cấu hình SMTP tiêu chuẩn (Dùng cho Gmail, Mailgun, v.v. nếu cần)
         'smtp' => [
             'transport' => 'smtp',
             'host' => env('MAIL_HOST', 'smtp.mailgun.org'),
@@ -30,24 +32,17 @@ return [
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN'),
-
-            'stream' => [
-                'ssl' => [
-                    'allow_self_signed' => true,
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
-                ],
-            ],
         ],
 
-        // SendGrid API (KHUYẾN NGHỊ)
+        // --- CẤU HÌNH SENDGRID (QUAN TRỌNG NHẤT) ---
+        // Đã được cấu hình cứng để không bị lỗi dù .env có sai host/user
         'sendgrid' => [
-            'transport' => 'smtp',
-            'host' => env('MAIL_HOST', 'smtp.sendgrid.net'),
-            'port' => env('MAIL_PORT', 587),
-            'encryption' => env('MAIL_ENCRYPTION', 'tls'),
-            'username' => env('MAIL_USERNAME'),
-            'password' => env('MAIL_PASSWORD'),
+            'transport' => 'smtp',          // BẮT BUỘC LÀ SMTP
+            'host' => 'smtp.sendgrid.net',  // Luôn trỏ về SendGrid
+            'port' => 587,
+            'encryption' => 'tls',
+            'username' => 'apikey',         // SendGrid luôn dùng user là 'apikey'
+            'password' => env('MAIL_PASSWORD'), // Chỉ lấy mật khẩu từ .env
             'timeout' => null,
         ],
 

@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -13,43 +12,36 @@ class OtpMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public string $otp;
+    public $otp;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(string $otp)
+    public function __construct($otp)
     {
         $this->otp = $otp;
     }
 
     /**
-     * Get the message envelope.
+     * Tiêu đề Email
      */
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Mã xác thực đăng ký tài khoản - Vie Cinema',
+            subject: '🔑 Mã xác thực OTP - SOLID TECH',
         );
     }
 
     /**
-     * Get the message content definition.
+     * Nội dung Email (Sử dụng Markdown cho đẹp)
      */
     public function content(): Content
     {
         return new Content(
-            view: 'emails.otp',
+            markdown: 'emails.otp', // Chúng ta sẽ tạo file giao diện ở bước 3
+            with: [
+                'otp' => $this->otp,
+            ],
         );
-    }
-
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
     }
 }

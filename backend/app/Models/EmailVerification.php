@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log; // 1. Thêm import Log
-use App\Mail\OtpMail;
-use Throwable; // 2. Import Throwable để dùng trong catch
+use Illuminate\Support\Facades\Log;
+use App\Mail\OtpMail; // Bạn cần đảm bảo file này tồn tại (xem mục 2 bên dưới)
+use Throwable;
 
 class EmailVerification extends Model
 {
@@ -32,44 +32,40 @@ class EmailVerification extends Model
     }
 
     /**
-     * Create and send OTP to email with registration data
+     * Create and send OTP to email
      */
     public static function createAndSend(string $email, ?array $registrationData = null): self
     {
-        // Delete old OTPs for this email
+        // 1. Xóa OTP cũ chưa verify của email này
         self::where('email', $email)
             ->whereNull('verified_at')
             ->delete();
 
-        // Generate new OTP
+        // 2. Tạo OTP mới
         $otp = self::generateOTP();
 
-        // Create verification record (expires in 10 minutes)
+        // 3. Lưu vào Database
         $verification = self::create([
             'email' => $email,
             'otp' => $otp,
             'registration_data' => $registrationData ? json_encode($registrationData) : null,
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => now()->addMinutes(10), // Hết hạn sau 10 phút
         ]);
 
-        // Send email (bắt lỗi để tránh ném exception khiến endpoint trả 500)
+        // 4. Gửi Email (Bọc trong try-catch để không làm sập App nếu lỗi mạng)
         try {
+            // LƯU Ý: Mail::to() sẽ tự dùng cấu hình mặc định (SendGrid) mà ta đã set trong config
             Mail::to($email)->send(new OtpMail($otp));
-        } catch (Throwable $e) { // Đã sửa: dùng Throwable trực tiếp (nhờ import ở trên)
-            // Ghi log chi tiết để dev kiểm tra sau
-            Log::error('Failed to send OTP to ' . $email . ': ' . $e->getMessage(), [ // Đã sửa: dùng Log trực tiếp
-                'exception' => $e,
-            ]);
-
-            // Không ném tiếp — trả về record verification để luồng đăng ký không bị dừng.
-            // Lưu ý: OTP có thể không đến người dùng nếu mail transport bị lỗi.
+        } catch (Throwable $e) {
+            Log::error("Failed to send OTP to {$email}: " . $e->getMessage());
+            // Không ném lỗi ra ngoài để User vẫn thấy giao diện nhập OTP (dù có thể không nhận được mail)
         }
 
         return $verification;
     }
 
     /**
-     * Verify OTP and return verification record
+     * Verify OTP
      */
     public static function verify(string $email, string $otp): ?self
     {
@@ -79,29 +75,10 @@ class EmailVerification extends Model
             ->where('expires_at', '>', now())
             ->first();
 
-        if (!$verification) {
-            return null;
+        if ($verification) {
+            $verification->update(['verified_at' => now()]);
         }
 
-        $verification->update(['verified_at' => now()]);
         return $verification;
-    }
-
-    /**
-     * Get registration data
-     */
-    public function getRegistrationData(): ?array
-    {
-        return $this->registration_data ? json_decode($this->registration_data, true) : null;
-    }
-
-    /**
-     * Check if email is verified
-     */
-    public static function isVerified(string $email): bool
-    {
-        return self::where('email', $email)
-            ->whereNotNull('verified_at')
-            ->exists();
     }
 }
