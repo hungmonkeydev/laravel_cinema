@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { X, Loader2, Eye, EyeOff } from "lucide-react";
 import api, { initCsrf } from "@/lib/api";
-import OtpModal from "./otp-modal";
+// import OtpModal from "./otp-modal";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -421,12 +421,12 @@ export default function LoginModal({
         </div>
       </div>
 
-      <OtpModal
+      {/* <OtpModal
         isOpen={showOtpModal}
         onClose={() => setShowOtpModal(false)}
         email={otpEmail}
         onVerifySuccess={handleOtpVerifySuccess}
-      />
+      /> */}
     </>
   );
 }
