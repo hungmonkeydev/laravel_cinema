@@ -42,8 +42,13 @@ return [
 
         // SendGrid API (KHUYẾN NGHỊ)
         'sendgrid' => [
-            'transport' => 'sendgrid',
-            'api_key' => env('SENDGRID_API_KEY'),
+            'transport' => 'smtp',
+            'host' => 'smtp.sendgrid.net',
+            'port' => 587,
+            'encryption' => 'tls',
+            'username' => 'apikey',
+            'password' => env('MAIL_PASSWORD'),
+            'timeout' => null,
         ],
 
         'ses' => [
