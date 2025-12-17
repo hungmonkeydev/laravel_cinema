@@ -32,47 +32,29 @@ class EmailVerification extends Model
     /**
      * Create and send OTP to email with registration data
      */
-   public static function createAndSend(string $email, ?array $registrationData = null): self
-{
-    // Delete old OTPs for this email
-    self::where('email', $email)
-        ->whereNull('verified_at')
-        ->delete();
+    public static function createAndSend(string $email, ?array $registrationData = null): self
+    {
+        // Delete old OTPs for this email
+        self::where('email', $email)
+            ->whereNull('verified_at')
+            ->delete();
 
-    // Generate new OTP
-    $otp = self::generateOTP();
+        // Generate new OTP
+        $otp = self::generateOTP();
 
-    // Create verification record (expires in 10 minutes)
-    $verification = self::create([
-        'email' => $email,
-        'otp' => $otp,
-        'registration_data' => $registrationData ? json_encode($registrationData) : null,
-        'expires_at' => now()->addMinutes(10),
-    ]);
+        // Create verification record (expires in 10 minutes)
+        $verification = self::create([
+            'email' => $email,
+            'otp' => $otp,
+            'registration_data' => $registrationData ? json_encode($registrationData) : null,
+            'expires_at' => now()->addMinutes(10),
+        ]);
 
-    // Send email with detailed error logging
-    try {
-        \Log::info("Attempting to send OTP to: $email");
-        \Log::info("Mail config - FROM: " . config('mail.from.address'));
-        \Log::info("Mail config - MAILER: " . config('mail.default'));
-        \Log::info("Mail config - HOST: " . config('mail.mailers.smtp.host'));
-        
+        // Send email
         Mail::to($email)->send(new OtpMail($otp));
-        
-        \Log::info("OTP sent successfully to: $email");
-    } catch (\Swift_TransportException $e) {
-        \Log::error("Swift Transport Exception: " . $e->getMessage());
-        \Log::error("Stack trace: " . $e->getTraceAsString());
-        throw new \Exception("Không thể kết nối đến mail server: " . $e->getMessage());
-    } catch (\Exception $e) {
-        \Log::error("Failed to send OTP to $email: " . $e->getMessage());
-        \Log::error("Error class: " . get_class($e));
-        \Log::error("Stack trace: " . $e->getTraceAsString());
-        throw $e;
-    }
 
-    return $verification;
-}
+        return $verification;
+    }
 
     /**
      * Verify OTP and return verification record
