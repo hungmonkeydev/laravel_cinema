@@ -7,7 +7,7 @@ return [
     | Default Mailer
     |--------------------------------------------------------------------------
     |
-    | Cấu hình mặc định sẽ sử dụng SMTP (Gửi qua Gmail/Mailgun...)
+    | Sử dụng SendGrid API thay vì SMTP
     |
     */
 
@@ -18,22 +18,21 @@ return [
     | Mailer Configurations
     |--------------------------------------------------------------------------
     |
-    | Tại đây cấu hình các driver gửi mail khác nhau.
+    | Cấu hình các driver gửi mail khác nhau.
     |
     */
 
     'mailers' => [
         'smtp' => [
             'transport' => 'smtp',
-            'host' => env('MAIL_HOST', 'smtp.sendgrid.net'), // Thay mailgun thành gmail làm mặc định
-            'port' => env('MAIL_PORT', 587),            // Sửa port mặc định thành 465
-            'encryption' => env('MAIL_ENCRYPTION', 'tls'), // Sửa mã hóa mặc định thành ssl
+            'host' => env('MAIL_HOST', 'smtp.sendgrid.net'),
+            'port' => env('MAIL_PORT', 587),
+            'encryption' => env('MAIL_ENCRYPTION', 'tls'),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN'),
 
-            // 👇 ĐOẠN CODE QUAN TRỌNG: Stream Fix (Giữ nguyên)
             'stream' => [
                 'ssl' => [
                     'allow_self_signed' => true,
@@ -41,13 +40,13 @@ return [
                     'verify_peer_name' => false,
                 ],
             ],
-            // 👆 KẾT THÚC ĐOẠN SỬA
-        ],
-        'sendgrid' => [
-            'transport' => 'sendgrid',
         ],
 
-        // ... (Các cấu hình mailer khác giữ nguyên)
+        // SendGrid API (KHUYẾN NGHỊ)
+        'sendgrid' => [
+            'transport' => 'sendgrid',
+            'dsn' => env('SENDGRID_DSN'),
+        ],
 
         'ses' => [
             'transport' => 'ses',
@@ -78,7 +77,7 @@ return [
         'failover' => [
             'transport' => 'failover',
             'mailers' => [
-                'smtp',
+                'sendgrid',
                 'log',
             ],
         ],
