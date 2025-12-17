@@ -17,47 +17,73 @@ class AuthController extends Controller
     /**
      * Xử lý chức năng Đăng ký (Register)
      */
-    public function register(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'full_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'password' => 'required|string|min:8|confirmed',
+   public function register(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'full_name' => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email|max:255',
+        'phone' => 'nullable|string|max:20',
+        'password' => 'required|string|min:8|confirmed',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Lỗi xác thực dữ liệu.',
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+
+    try {
+        // TẠM THỜI BỎ QUA GỬI EMAIL - TẠO USER TRỰC TIẾP
+        $user = User::create([
+            'full_name' => $request->full_name,
+            'email' => $request->email,
+            'phone' => $request->phone ?? null,
+            'password' => $request->password,
+            'role' => 'customer',
+            'email_verified_at' => now(), // Tạm thời verify luôn
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Lỗi xác thực dữ liệu.',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
+        Auth::login($user);
+        $token = $user->createToken('auth-token')->plainTextToken;
 
-        try {
-            EmailVerification::createAndSend($request->email, [
-                'full_name' => $request->full_name,
+        return response()->json([
+            'success' => true,
+            'message' => 'Đăng ký thành công!',
+            'data' => [
+                'user' => $user->makeHidden(['password_hash', 'remember_token']),
+                'role' => $user->role,
+                'redirect_to' => '/',
+                'access_token' => $token,
+            ],
+        ], 200);
+
+        /* CODE CŨ - TẠM COMMENT ĐỂ TEST
+        EmailVerification::createAndSend($request->email, [
+            'full_name' => $request->full_name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'password' => $request->password,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Mã OTP đã được gửi đến email của bạn.',
+            'data' => [
                 'email' => $request->email,
-                'phone' => $request->phone,
-                'password' => $request->password,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra và xác thực.',
-                'data' => [
-                    'email' => $request->email,
-                    'requires_otp' => true,
-                ],
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Không thể gửi email. Vui lòng thử lại sau.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+                'requires_otp' => true,
+            ],
+        ], 200);
+        */
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Không thể tạo tài khoản. Vui lòng thử lại.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
 
     /**
      * Xử lý chức năng Đăng nhập (Login)
