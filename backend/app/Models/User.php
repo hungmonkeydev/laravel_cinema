@@ -2,81 +2,74 @@
 
 namespace App\Models;
 
+// Các thư viện cần thiết
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Support\Facades\Hash; // Cần thiết cho Setter
 
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    // Primary key is 'user_id' (custom)
+    /**
+     * 1. Khai báo Khóa chính
+     * Vì bảng của bạn dùng 'user_id' chứ không phải 'id'
+     */
     protected $primaryKey = 'user_id';
 
     /**
-     * The attributes that are mass assignable.
-     * Chỉ định các cột trong DB trừ mật khẩu (vì dùng Setter).
-     * @var list<string>
+     * 2. Các trường được phép gán dữ liệu (Mass Assignment)
      */
     protected $fillable = [
         'full_name',
         'email',
-        // 'password_hash' sẽ được gán giá trị thông qua Setter
-        'password',
         'phone',
         'role',
-        'provider',
-        'provider_id',
-        'provider_token',
-        'provider_refresh_token',
-        'provider_avatar_url',
+        'is_active',
+        'password',       // Để nhận dữ liệu từ Controller
+        'password_hash',  // Để lưu vào Database
     ];
 
     /**
-     * BẮT BUỘC: PHƯƠNG THỨC SETTER (Mutator)
-     * Khi gọi User::create(['password' => '123456']), setter này sẽ Hash mật khẩu và gán cho cột DB.
-     * Cho phép null để support OAuth users không có password.
+     * Các trường cần ẩn đi khi trả về API
      */
-    public function setPasswordAttribute($value)
-    {
-        if ($value !== null) {
-            $this->attributes['password_hash'] = Hash::make($value);
-        }
-    }
+    protected $hidden = [
+        'password_hash',   // Ẩn mật khẩu đã mã hóa
+        'remember_token',
+    ];
 
-    // PHƯƠNG THỨC ÁNH XẠ: Trả về mật khẩu hash cho Auth::attempt()
-    public function getAuthPassword(): string
+    /**
+     * Các trường ép kiểu dữ liệu
+     */
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password_hash' => 'hashed', // Hỗ trợ bảo mật Laravel 10+
+    ];
+
+    /* =========================================================
+       PHẦN QUAN TRỌNG ĐỂ SỬA LỖI CỦA BẠN
+       ========================================================= */
+
+    /**
+     * 3. Chỉ định tên cột mật khẩu cho Laravel Auth biết
+     * Mặc định Laravel tìm cột 'password', ta trỏ nó về 'password_hash'
+     */
+    public function getAuthPassword()
     {
         return $this->password_hash;
     }
 
     /**
-     * The attributes that should be hidden for serialization.
-     * ...
+     * 4. Mutator: Tự động mã hóa mật khẩu khi tạo mới/cập nhật
+     * Khi Controller gọi: User::create(['password' => '123456'])
+     * Hàm này sẽ tự chạy, mã hóa '123456' và lưu vào cột 'password_hash'
      */
-    protected $hidden = [
-        'password_hash',
-        'remember_token',
-        'provider_token',
-        'provider_refresh_token',
-    ];
-
-    /**
-     * Get the attributes that should be cast.
-     * Loại bỏ 'password_hash' => 'hashed' vì chúng ta dùng Setter Hash thủ công.
-     * ...
-     */
-    protected function casts(): array
+    public function setPasswordAttribute($value)
     {
-        return [
-            'email_verified_at' => 'datetime',
-            // KHÔNG CẦN 'password_hash' => 'hashed', vì Setter đã Hash
-        ];
+        // Chỉ mã hóa nếu mật khẩu không rỗng
+        if (!empty($value)) {
+            $this->attributes['password_hash'] = bcrypt($value);
+        }
     }
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-       // KHÔNG CẦN 'password_hash' => 'hashed', vì Setter đã Hash
-    ];
 }
