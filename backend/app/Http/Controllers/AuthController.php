@@ -20,7 +20,7 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
-        // 1. Validate dữ liệu
+        // 1. Validate dữ liệu đầu vào (Giữ nguyên)
         $validator = Validator::make($request->all(), [
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email|max:255',
@@ -37,64 +37,43 @@ class AuthController extends Controller
         }
 
         try {
-            // --- ĐOẠN CŨ: GỬI OTP (ĐÃ COMMENT) ---
-            /*
-            EmailVerification::createAndSend($request->email, [
-                'full_name' => $request->full_name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'password' => $request->password,
-            ]);
+            // 2. THAY ĐỔI LỚN Ở ĐÂY:
+            // Không gọi EmailVerification nữa, mà tạo User luôn!
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra và xác thực.',
-                'data' => [
-                    'email' => $request->email,
-                    'requires_otp' => true,
-                ],
-            ], 200);
-            */
-            // -------------------------------------
-
-            // --- ĐOẠN MỚI: TẠO USER LUÔN ---
             $user = User::create([
                 'full_name' => $request->full_name,
                 'email' => $request->email,
                 'phone' => $request->phone,
-                'password' => Hash::make($request->password), // Hash mật khẩu
+                // Quan trọng: Phải mã hóa mật khẩu ngay tại đây
+                'password' => bcrypt($request->password), 
                 'role' => 'customer',
-                'email_verified_at' => now(), // Đánh dấu là đã xác thực luôn
+                // Quan trọng: Đánh dấu là đã xác thực email luôn
+                'email_verified_at' => now(), 
             ]);
 
-            // Đăng nhập luôn cho tiện
+            // 3. Tự động đăng nhập luôn sau khi đăng ký
             Auth::login($user);
 
-            // Tạo token
+            // 4. Tạo Token để trả về cho Frontend dùng luôn
             $token = $user->createToken('auth-token')->plainTextToken;
 
             return response()->json([
                 'success' => true,
-                'message' => 'Đăng ký thành công!',
+                'message' => 'Đăng ký thành công! Bạn đã được đăng nhập.',
                 'data' => [
-                    'user' => $user->makeHidden(['password', 'remember_token']), // Ẩn thông tin nhạy cảm
+                    'user' => $user->makeHidden(['password_hash', 'remember_token']),
                     'role' => $user->role,
-                    'redirect_to' => '/',
-                    'access_token' => $token,
+                    'redirect_to' => '/', // Frontend sẽ chuyển hướng về trang chủ
+                    'access_token' => $token, // Frontend lưu token này để dùng
                 ],
-            ], 201); // 201 Created
+            ], 200);
 
-        } catch (Throwable $e) {
-            Log::error('Register error: ' . $e->getMessage(), [
-                'exception' => $e,
-                'input' => $request->all(),
-            ]);
-
-            $message = config('app.debug') ? $e->getMessage() : 'Máy chủ gặp lỗi khi xử lý đăng ký. Vui lòng thử lại sau.';
-
+        } catch (\Throwable $e) {
+            \Log::error('Register error: ' . $e->getMessage());
+            
             return response()->json([
                 'success' => false,
-                'message' => $message,
+                'message' => 'Lỗi server: ' . $e->getMessage(),
             ], 500);
         }
     }

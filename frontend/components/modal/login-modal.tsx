@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { X, Loader2, Eye, EyeOff } from "lucide-react";
 import api, { initCsrf } from "@/lib/api";
-// import OtpModal from "./otp-modal";
+import OtpModal from "./otp-modal";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -45,7 +45,7 @@ export default function LoginModal({
 
     try {
       if (isSignUp) {
-        // === 1. Validate dữ liệu (Giữ nguyên) ===
+        // === LOGIC ĐĂNG KÝ ===
         if (!fullName.trim()) {
           setError("Vui lòng nhập họ tên");
           setIsLoading(false);
@@ -72,10 +72,8 @@ export default function LoginModal({
           return;
         }
 
-        // === 2. Gọi API Đăng ký ===
         await initCsrf();
-        // Gọi API backend
-        await api.post("/register", {
+        const response = await api.post("/register", {
           full_name: fullName,
           email,
           phone,
@@ -83,25 +81,30 @@ export default function LoginModal({
           password_confirmation: confirmPassword,
         });
 
-        // === 3. XỬ LÝ THÀNH CÔNG (TUYỆT ĐỐI KHÔNG BẬT OTP) ===
+        // Check if OTP is required
+        if (response.data.data?.requires_otp) {
+          setSuccess("Mã OTP đã được gửi đến email của bạn!");
+          setOtpEmail(email);
 
-        // Thông báo thành công
-        setSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
-
-        // Đảm bảo tắt modal OTP nếu nó lỡ bật (để chắc ăn)
-        setShowOtpModal(false);
-
-        // Đợi 1.5 giây rồi chuyển sang tab Đăng Nhập
-        setTimeout(() => {
-          setIsSignUp(false); // Chuyển biến này thành false để hiện form Đăng nhập
-          setSuccess(""); // Xóa thông báo
-          setPassword(""); // Xóa mật khẩu cũ
-          setConfirmPassword("");
-        }, 1500);
+          setTimeout(() => {
+            setSuccess("");
+            setShowOtpModal(true);
+          }, 1500);
+        } else {
+          // Old flow (if OTP is disabled)
+          setSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
+          setTimeout(() => {
+            setFullName("");
+            setEmail("");
+            setPhone("");
+            setPassword("");
+            setConfirmPassword("");
+            setSuccess("");
+            setIsSignUp(false);
+          }, 2000);
+        }
       } else {
-        // ============================================================
-        // === LOGIC ĐĂNG NHẬP (GIỮ NGUYÊN NHƯ CŨ) ===
-        // ============================================================
+        // === LOGIC ĐĂNG NHẬP ===
         if (!validateEmail(email)) {
           setError("Email không hợp lệ");
           setIsLoading(false);
@@ -421,12 +424,12 @@ export default function LoginModal({
         </div>
       </div>
 
-      {/* <OtpModal
+      <OtpModal
         isOpen={showOtpModal}
         onClose={() => setShowOtpModal(false)}
         email={otpEmail}
         onVerifySuccess={handleOtpVerifySuccess}
-      /> */}
+      />
     </>
   );
 }
