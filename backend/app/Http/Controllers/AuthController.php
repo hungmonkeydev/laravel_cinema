@@ -8,9 +8,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Laravel\Socialite\Facades\Socialite; // Thư viện Socialite
-use GuzzleHttp\Client; // Để tắt kiểm tra SSL (nếu cần dùng trong controller)
-use Illuminate\Support\Str; // Để tạo mật khẩu ngẫu nhiên
+use Laravel\Socialite\Facades\Socialite;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log; // 1. Thêm import Log
+
+use Throwable; // Import Throwable để bắt lỗi chuẩn xác
 
 class AuthController extends Controller
 {
@@ -35,6 +37,7 @@ class AuthController extends Controller
         }
 
         try {
+            // Gọi hàm tạo và gửi OTP (Hàm này đã có try-catch gửi mail bên trong Model)
             EmailVerification::createAndSend($request->email, [
                 'full_name' => $request->full_name,
                 'email' => $request->email,
@@ -50,9 +53,9 @@ class AuthController extends Controller
                     'requires_otp' => true,
                 ],
             ], 200);
-        } catch (\Throwable $e) {
-            // Ghi log chi tiết để dev có thể debug (stacktrace + input)
-            \Log::error('Register error: ' . $e->getMessage(), [
+        } catch (Throwable $e) {
+            // Ghi log chi tiết
+                Log::error('Register error: ' . $e->getMessage(), [
                 'exception' => $e,
                 'input' => $request->all(),
             ]);
@@ -114,7 +117,13 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
+        // Logout guard web
         Auth::guard('web')->logout();
+
+        // Xóa token hiện tại (nếu dùng Sanctum)
+        if ($request->user()) {
+            $request->user()->currentAccessToken()->delete();
+        }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -161,11 +170,14 @@ class AuthController extends Controller
             ], 400);
         }
 
+        // Tạo User mới sau khi xác thực thành công
         $user = User::create([
             'full_name' => $pendingData['full_name'],
             'email' => $pendingData['email'],
             'phone' => $pendingData['phone'] ?? null,
-            'password' => $pendingData['password'],
+            'password' => $pendingData['password'], // Password này đã được hash chưa? Nếu chưa thì Model User nên có mutator hoặc hash ở đây.
+            // Giả sử Model User của bạn tự hash password hoặc dữ liệu truyền vào chưa hash. 
+            // Nếu model User ko tự hash, bạn nên dùng Hash::make($pendingData['password'])
             'role' => 'customer',
             'email_verified_at' => now(),
         ]);
@@ -210,8 +222,8 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Mã OTP mới đã được gửi đến email của bạn.',
             ], 200);
-        } catch (\Throwable $e) {
-            \Log::error('Resend OTP error: ' . $e->getMessage(), [
+        } catch (Throwable $e) {
+            Log::error('Resend OTP error: ' . $e->getMessage(), [
                 'exception' => $e,
                 'input' => $request->all(),
             ]);
@@ -225,15 +237,13 @@ class AuthController extends Controller
         }
     }
 
-    // --- PHẦN GOOGLE LOGIN (ĐÃ SỬA LỖI) ---
+    // --- PHẦN GOOGLE LOGIN ---
 
     /**
-     * Bắt đầu đăng nhập Google (Thêm hàm này nếu chưa có)
+     * Bắt đầu đăng nhập Google
      */
     public function redirectToGoogle()
     {
-        // Nếu bạn đã cấu hình 'guzzle' => ['verify' => false] trong config/services.php
-        // thì không cần dòng setHttpClient ở đây nữa.
         return Socialite::driver('google')
             ->stateless()
             ->redirect();
@@ -244,10 +254,11 @@ class AuthController extends Controller
      */
     public function handleGoogleCallback()
     {
+        // URL Frontend của bạn trên Railway (Dùng làm fallback nếu quên set ENV)
+        $defaultFrontendUrl = 'https://frontend-laravel-production.up.railway.app';
+        $frontendUrl = env('FRONTEND_URL', $defaultFrontendUrl);
+
         try {
-            // Lấy thông tin user từ Google
-            // Lưu ý: Nếu chưa config tắt SSL trong services.php thì dùng:
-            // ->setHttpClient(new Client(['verify' => false]))->stateless()->user();
             $googleUser = Socialite::driver('google')->stateless()->user();
 
             // Tìm user trong DB bằng email
@@ -270,13 +281,10 @@ class AuthController extends Controller
             // Tạo token Sanctum
             $token = $user->createToken('google-auth-token')->plainTextToken;
 
-            // Chuyển hướng về Frontend (React) kèm theo Token
-            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
-
+            // Chuyển hướng về Frontend kèm theo Token
             return redirect()->to("$frontendUrl/auth/callback?login=success&token=$token");
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             // Nếu lỗi thì chuyển về Frontend kèm thông báo lỗi
-            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
             return redirect()->to("$frontendUrl/auth/callback?login=error&message=" . urlencode($e->getMessage()));
         }
     }

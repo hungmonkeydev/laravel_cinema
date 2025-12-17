@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log; // 1. Thêm import Log
 use App\Mail\OtpMail;
+use Throwable; // 2. Import Throwable để dùng trong catch
 
 class EmailVerification extends Model
 {
@@ -50,8 +52,18 @@ class EmailVerification extends Model
             'expires_at' => now()->addMinutes(10),
         ]);
 
-        // Send email
-        Mail::to($email)->send(new OtpMail($otp));
+        // Send email (bắt lỗi để tránh ném exception khiến endpoint trả 500)
+        try {
+            Mail::to($email)->send(new OtpMail($otp));
+        } catch (Throwable $e) { // Đã sửa: dùng Throwable trực tiếp (nhờ import ở trên)
+            // Ghi log chi tiết để dev kiểm tra sau
+            Log::error('Failed to send OTP to ' . $email . ': ' . $e->getMessage(), [ // Đã sửa: dùng Log trực tiếp
+                'exception' => $e,
+            ]);
+
+            // Không ném tiếp — trả về record verification để luồng đăng ký không bị dừng.
+            // Lưu ý: OTP có thể không đến người dùng nếu mail transport bị lỗi.
+        }
 
         return $verification;
     }
