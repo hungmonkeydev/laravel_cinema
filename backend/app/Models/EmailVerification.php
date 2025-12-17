@@ -52,14 +52,16 @@ class EmailVerification extends Model
             'expires_at' => now()->addMinutes(10), // Hết hạn sau 10 phút
         ]);
 
-        // 4. Gửi Email (Bọc trong try-catch để không làm sập App nếu lỗi mạng)
-        try {
-            // LƯU Ý: Mail::to() sẽ tự dùng cấu hình mặc định (SendGrid) mà ta đã set trong config
-            Mail::to($email)->send(new OtpMail($otp));
-        } catch (Throwable $e) {
-            Log::error("Failed to send OTP to {$email}: " . $e->getMessage());
-            // Không ném lỗi ra ngoài để User vẫn thấy giao diện nhập OTP (dù có thể không nhận được mail)
-        }
+        // 4. Gửi Email (ĐÃ COMMENT LẠI ĐỂ KHÔNG GỬI NỮA)
+        // try {
+        //    Mail::to($email)->send(new OtpMail($otp));
+        // } catch (Throwable $e) {
+        //    Log::error("Failed to send OTP to {$email}: " . $e->getMessage());
+        // }
+
+        // --- THÊM DÒNG NÀY ĐỂ XEM OTP MÀ KHÔNG CẦN MAIL ---
+        Log::info("DEBUG OTP cho email {$email} là: {$otp}");
+        // --------------------------------------------------
 
         return $verification;
     }
