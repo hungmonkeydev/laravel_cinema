@@ -13,13 +13,13 @@ Route::get('/', function () {
 Route::get('/test-connect', function () {
     try {
         $response = Http::get('https://www.google.com');
-        return "✅ KẾT NỐI THÀNH CÔNG! Mã lỗi cURL 60 đã được sửa.";
+        return "KẾT NỐI THÀNH CÔNG! Mã lỗi cURL 60 đã được sửa.";
     } catch (\Exception $e) {
-        return "❌ VẪN LỖI: " . $e->getMessage();
+        return " VẪN LỖI: " . $e->getMessage();
     }
 });
 
-// 👇 ROUTE MỚI: XÓA CACHE (Thêm đoạn này vào cuối) 👇
+// ROUTE MỚI: XÓA CACHE (Thêm đoạn này vào cuối) 
 Route::get('/clear-cache', function () {
     Artisan::call('optimize:clear');
     Artisan::call('config:clear');
