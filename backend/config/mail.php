@@ -32,7 +32,7 @@ return [
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN'),
-            
+
             // 👇 ĐOẠN CODE QUAN TRỌNG: Stream Fix (Giữ nguyên)
             'stream' => [
                 'ssl' => [
@@ -42,6 +42,9 @@ return [
                 ],
             ],
             // 👆 KẾT THÚC ĐOẠN SỬA
+        ],
+        'sendgrid' => [
+            'transport' => 'sendgrid',
         ],
 
         // ... (Các cấu hình mailer khác giữ nguyên)
