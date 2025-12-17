@@ -45,9 +45,7 @@ export default function LoginModal({
 
     try {
       if (isSignUp) {
-        // ============================================================
-        // === LOGIC ĐĂNG KÝ (ĐÃ SỬA: KHÔNG OTP, KHÔNG AUTO LOGIN) ===
-        // ============================================================
+        // === 1. Validate dữ liệu (Giữ nguyên) ===
         if (!fullName.trim()) {
           setError("Vui lòng nhập họ tên");
           setIsLoading(false);
@@ -74,9 +72,9 @@ export default function LoginModal({
           return;
         }
 
+        // === 2. Gọi API Đăng ký ===
         await initCsrf();
-
-        // Gọi API Đăng ký
+        // Gọi API backend
         await api.post("/register", {
           full_name: fullName,
           email,
@@ -85,16 +83,21 @@ export default function LoginModal({
           password_confirmation: confirmPassword,
         });
 
-        // --- ĐOẠN XỬ LÝ MỚI ---
+        // === 3. XỬ LÝ THÀNH CÔNG (TUYỆT ĐỐI KHÔNG BẬT OTP) ===
+
+        // Thông báo thành công
         setSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
 
-        // Đợi 1.5 giây để người dùng đọc thông báo, sau đó chuyển sang form Đăng nhập
+        // Đảm bảo tắt modal OTP nếu nó lỡ bật (để chắc ăn)
+        setShowOtpModal(false);
+
+        // Đợi 1.5 giây rồi chuyển sang tab Đăng Nhập
         setTimeout(() => {
-          setIsSignUp(false); // Chuyển sang tab Đăng nhập
+          setIsSignUp(false); // Chuyển biến này thành false để hiện form Đăng nhập
           setSuccess(""); // Xóa thông báo
-          // Giữ nguyên Email & Pass đã nhập để người dùng đỡ phải gõ lại
+          setPassword(""); // Xóa mật khẩu cũ
+          setConfirmPassword("");
         }, 1500);
-        // -----------------------
       } else {
         // ============================================================
         // === LOGIC ĐĂNG NHẬP (GIỮ NGUYÊN NHƯ CŨ) ===
