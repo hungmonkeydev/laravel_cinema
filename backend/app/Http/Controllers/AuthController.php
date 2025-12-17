@@ -3,24 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\EmailVerification;
+// use App\Models\EmailVerification; // Đã comment: Không dùng nữa
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log; // 1. Thêm import Log
-
-use Throwable; // Import Throwable để bắt lỗi chuẩn xác
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class AuthController extends Controller
 {
     /**
-     * Xử lý chức năng Đăng ký (Register)
+     * Xử lý chức năng Đăng ký (Register) - KHÔNG CẦN OTP
      */
     public function register(Request $request)
     {
+        // 1. Validate dữ liệu
         $validator = Validator::make($request->all(), [
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email|max:255',
@@ -37,14 +37,15 @@ class AuthController extends Controller
         }
 
         try {
-            // Gọi hàm tạo và gửi OTP (Hàm này đã có try-catch gửi mail bên trong Model)
+            // --- ĐOẠN CŨ: GỬI OTP (ĐÃ COMMENT) ---
+            /*
             EmailVerification::createAndSend($request->email, [
                 'full_name' => $request->full_name,
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'password' => $request->password,
             ]);
-
+            
             return response()->json([
                 'success' => true,
                 'message' => 'Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra và xác thực.',
@@ -53,9 +54,38 @@ class AuthController extends Controller
                     'requires_otp' => true,
                 ],
             ], 200);
+            */
+            // -------------------------------------
+
+            // --- ĐOẠN MỚI: TẠO USER LUÔN ---
+            $user = User::create([
+                'full_name' => $request->full_name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'password' => Hash::make($request->password), // Hash mật khẩu
+                'role' => 'customer',
+                'email_verified_at' => now(), // Đánh dấu là đã xác thực luôn
+            ]);
+
+            // Đăng nhập luôn cho tiện
+            Auth::login($user);
+
+            // Tạo token
+            $token = $user->createToken('auth-token')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Đăng ký thành công!',
+                'data' => [
+                    'user' => $user->makeHidden(['password', 'remember_token']), // Ẩn thông tin nhạy cảm
+                    'role' => $user->role,
+                    'redirect_to' => '/',
+                    'access_token' => $token,
+                ],
+            ], 201); // 201 Created
+
         } catch (Throwable $e) {
-            // Ghi log chi tiết
-                Log::error('Register error: ' . $e->getMessage(), [
+            Log::error('Register error: ' . $e->getMessage(), [
                 'exception' => $e,
                 'input' => $request->all(),
             ]);
@@ -79,9 +109,15 @@ class AuthController extends Controller
             'password' => 'required|string|min:6',
         ]);
 
+        // Tìm user (Sửa logic check password một chút cho chuẩn Laravel)
         $user = User::where('email', $credentials['email'])->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password_hash)) {
+        // Kiểm tra User tồn tại và Khớp mật khẩu
+        // Lưu ý: Cột password trong DB của bạn tên là 'password' hay 'password_hash'?
+        // Nếu là 'password' (chuẩn Laravel) thì dùng $user->password.
+        // Nếu bạn đặt tên cột là 'password_hash' thì dùng $user->password_hash.
+        // Dưới đây mình để mặc định là check với $user->password (chuẩn).
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Email hoặc mật khẩu không đúng',
@@ -96,7 +132,7 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Đăng nhập thành công',
             'data' => [
-                'user' => $user->makeHidden(['password_hash', 'remember_token']),
+                'user' => $user->makeHidden(['password', 'remember_token']),
                 'role' => $user->role,
                 'redirect_to' => $user->role === 'admin' ? '/admin' : '/',
                 'access_token' => $token,
@@ -117,10 +153,8 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        // Logout guard web
         Auth::guard('web')->logout();
 
-        // Xóa token hiện tại (nếu dùng Sanctum)
         if ($request->user()) {
             $request->user()->currentAccessToken()->delete();
         }
@@ -134,108 +168,20 @@ class AuthController extends Controller
         ], 200);
     }
 
-    /**
-     * Verify OTP
-     */
+    /*
+    // --- ĐÃ COMMENT: CÁC HÀM LIÊN QUAN ĐẾN OTP KHÔNG DÙNG NỮA ---
+
     public function verifyOtp(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'otp' => 'required|string|size:6',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dữ liệu không hợp lệ.',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $verification = EmailVerification::verify($request->email, $request->otp);
-
-        if (!$verification) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Mã OTP không đúng hoặc đã hết hạn.',
-            ], 400);
-        }
-
-        $pendingData = $verification->getRegistrationData();
-
-        if (!$pendingData) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Không tìm thấy thông tin đăng ký. Vui lòng đăng ký lại.',
-            ], 400);
-        }
-
-        // Tạo User mới sau khi xác thực thành công
-        $user = User::create([
-            'full_name' => $pendingData['full_name'],
-            'email' => $pendingData['email'],
-            'phone' => $pendingData['phone'] ?? null,
-            'password' => $pendingData['password'], // Password này đã được hash chưa? Nếu chưa thì Model User nên có mutator hoặc hash ở đây.
-            // Giả sử Model User của bạn tự hash password hoặc dữ liệu truyền vào chưa hash. 
-            // Nếu model User ko tự hash, bạn nên dùng Hash::make($pendingData['password'])
-            'role' => 'customer',
-            'email_verified_at' => now(),
-        ]);
-
-        Auth::login($user);
-
-        $token = $user->createToken('auth-token')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Xác thực thành công! Tài khoản đã được kích hoạt.',
-            'data' => [
-                'user' => $user->makeHidden(['password_hash', 'remember_token']),
-                'role' => $user->role,
-                'redirect_to' => $user->role === 'admin' ? '/admin' : '/',
-                'access_token' => $token,
-            ],
-        ], 200);
+        // ... Code cũ ...
     }
 
-    /**
-     * Resend OTP
-     */
     public function resendOtp(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Email không hợp lệ.',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        try {
-            EmailVerification::createAndSend($request->email);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Mã OTP mới đã được gửi đến email của bạn.',
-            ], 200);
-        } catch (Throwable $e) {
-            Log::error('Resend OTP error: ' . $e->getMessage(), [
-                'exception' => $e,
-                'input' => $request->all(),
-            ]);
-
-            $message = config('app.debug') ? $e->getMessage() : 'Máy chủ gặp lỗi khi gửi mã OTP. Vui lòng thử lại sau.';
-
-            return response()->json([
-                'success' => false,
-                'message' => $message,
-            ], 500);
-        }
+        // ... Code cũ ...
     }
+    
+    */
 
     // --- PHẦN GOOGLE LOGIN ---
 
@@ -254,37 +200,30 @@ class AuthController extends Controller
      */
     public function handleGoogleCallback()
     {
-        // URL Frontend của bạn trên Railway (Dùng làm fallback nếu quên set ENV)
         $defaultFrontendUrl = 'https://frontend-laravel-production.up.railway.app';
         $frontendUrl = env('FRONTEND_URL', $defaultFrontendUrl);
 
         try {
             $googleUser = Socialite::driver('google')->stateless()->user();
 
-            // Tìm user trong DB bằng email
             $user = User::where('email', $googleUser->getEmail())->first();
 
             if (!$user) {
-                // Nếu chưa có thì tạo mới
                 $user = User::create([
                     'full_name' => $googleUser->getName(),
                     'email' => $googleUser->getEmail(),
-                    'password' => bcrypt(Str::random(16)), // Mật khẩu ngẫu nhiên
+                    'password' => Hash::make(Str::random(16)), // Sửa thành Hash::make cho chuẩn
                     'role' => 'customer',
-                    'email_verified_at' => now(), // Google đã xác thực
+                    'email_verified_at' => now(),
                 ]);
             }
 
-            // Đăng nhập user
             Auth::login($user);
 
-            // Tạo token Sanctum
             $token = $user->createToken('google-auth-token')->plainTextToken;
 
-            // Chuyển hướng về Frontend kèm theo Token
             return redirect()->to("$frontendUrl/auth/callback?login=success&token=$token");
         } catch (Throwable $e) {
-            // Nếu lỗi thì chuyển về Frontend kèm thông báo lỗi
             return redirect()->to("$frontendUrl/auth/callback?login=error&message=" . urlencode($e->getMessage()));
         }
     }

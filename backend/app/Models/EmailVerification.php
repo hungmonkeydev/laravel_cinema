@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Mail;
+// use Illuminate\Support\Facades\Mail; // Đã comment: Không dùng Mail facade nữa
 use Illuminate\Support\Facades\Log;
-use App\Mail\OtpMail; // Bạn cần đảm bảo file này tồn tại (xem mục 2 bên dưới)
+// use App\Mail\OtpMail; // Đã comment: Không dùng class Mail này nữa
 use Throwable;
 
 class EmailVerification extends Model
@@ -52,16 +52,19 @@ class EmailVerification extends Model
             'expires_at' => now()->addMinutes(10), // Hết hạn sau 10 phút
         ]);
 
-        // 4. Gửi Email (ĐÃ COMMENT LẠI ĐỂ KHÔNG GỬI NỮA)
-        // try {
-        //    Mail::to($email)->send(new OtpMail($otp));
-        // } catch (Throwable $e) {
-        //    Log::error("Failed to send OTP to {$email}: " . $e->getMessage());
-        // }
+        // =================================================================
+        // 4. PHẦN GỬI MAIL (ĐÃ VÔ HIỆU HÓA HOÀN TOÀN)
+        // =================================================================
+        /*
+        try {
+            Mail::to($email)->send(new OtpMail($otp));
+        } catch (Throwable $e) {
+            Log::error("Failed to send OTP to {$email}: " . $e->getMessage());
+        }
+        */
 
-        // --- THÊM DÒNG NÀY ĐỂ XEM OTP MÀ KHÔNG CẦN MAIL ---
-        Log::info("DEBUG OTP cho email {$email} là: {$otp}");
-        // --------------------------------------------------
+        // 5. GHI LOG ĐỂ BẠN LẤY MÃ TEST (Thay vì gửi mail)
+        Log::info("✅ DEBUG OTP: Mã xác thực cho email [{$email}] là: {$otp}");
 
         return $verification;
     }
@@ -82,5 +85,18 @@ class EmailVerification extends Model
         }
 
         return $verification;
+    }
+    
+    // ... Các hàm khác giữ nguyên
+    public function getRegistrationData(): ?array
+    {
+        return $this->registration_data ? json_decode($this->registration_data, true) : null;
+    }
+
+    public static function isVerified(string $email): bool
+    {
+        return self::where('email', $email)
+            ->whereNotNull('verified_at')
+            ->exists();
     }
 }
