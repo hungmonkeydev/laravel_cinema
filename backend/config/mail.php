@@ -21,7 +21,7 @@ return [
     */
 
     'mailers' => [
-        
+
         // Cấu hình SMTP tiêu chuẩn (Dùng cho Gmail, Mailgun, v.v. nếu cần)
         'smtp' => [
             'transport' => 'smtp',
@@ -37,12 +37,12 @@ return [
         // --- CẤU HÌNH SENDGRID (QUAN TRỌNG NHẤT) ---
         // Đã được cấu hình cứng để không bị lỗi dù .env có sai host/user
         'sendgrid' => [
-            'transport' => 'smtp',          // BẮT BUỘC LÀ SMTP
-            'host' => 'smtp.sendgrid.net',  // Luôn trỏ về SendGrid
-            'port' => 587,
+            'transport' => 'smtp',
+            'host' => 'smtp.sendgrid.net',
+            'port' => 2525, // <--- ĐỔI TỪ 587 SANG 2525
             'encryption' => 'tls',
-            'username' => 'apikey',         // SendGrid luôn dùng user là 'apikey'
-            'password' => env('MAIL_PASSWORD'), // Chỉ lấy mật khẩu từ .env
+            'username' => 'apikey',
+            'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
         ],
 
