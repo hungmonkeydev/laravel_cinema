@@ -45,7 +45,9 @@ export default function LoginModal({
 
     try {
       if (isSignUp) {
-        // === LOGIC ĐĂNG KÝ ===
+        // ============================================================
+        // === LOGIC ĐĂNG KÝ (ĐÃ SỬA: KHÔNG OTP, KHÔNG AUTO LOGIN) ===
+        // ============================================================
         if (!fullName.trim()) {
           setError("Vui lòng nhập họ tên");
           setIsLoading(false);
@@ -73,7 +75,9 @@ export default function LoginModal({
         }
 
         await initCsrf();
-        const response = await api.post("/register", {
+
+        // Gọi API Đăng ký
+        await api.post("/register", {
           full_name: fullName,
           email,
           phone,
@@ -81,30 +85,20 @@ export default function LoginModal({
           password_confirmation: confirmPassword,
         });
 
-        // Check if OTP is required
-        if (response.data.data?.requires_otp) {
-          setSuccess("Mã OTP đã được gửi đến email của bạn!");
-          setOtpEmail(email);
+        // --- ĐOẠN XỬ LÝ MỚI ---
+        setSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
 
-          setTimeout(() => {
-            setSuccess("");
-            setShowOtpModal(true);
-          }, 1500);
-        } else {
-          // Old flow (if OTP is disabled)
-          setSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
-          setTimeout(() => {
-            setFullName("");
-            setEmail("");
-            setPhone("");
-            setPassword("");
-            setConfirmPassword("");
-            setSuccess("");
-            setIsSignUp(false);
-          }, 2000);
-        }
+        // Đợi 1.5 giây để người dùng đọc thông báo, sau đó chuyển sang form Đăng nhập
+        setTimeout(() => {
+          setIsSignUp(false); // Chuyển sang tab Đăng nhập
+          setSuccess(""); // Xóa thông báo
+          // Giữ nguyên Email & Pass đã nhập để người dùng đỡ phải gõ lại
+        }, 1500);
+        // -----------------------
       } else {
-        // === LOGIC ĐĂNG NHẬP ===
+        // ============================================================
+        // === LOGIC ĐĂNG NHẬP (GIỮ NGUYÊN NHƯ CŨ) ===
+        // ============================================================
         if (!validateEmail(email)) {
           setError("Email không hợp lệ");
           setIsLoading(false);
