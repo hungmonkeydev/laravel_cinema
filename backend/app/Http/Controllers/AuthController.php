@@ -50,11 +50,18 @@ class AuthController extends Controller
                     'requires_otp' => true,
                 ],
             ], 200);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // Ghi log chi tiết để dev có thể debug (stacktrace + input)
+            \Log::error('Register error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'input' => $request->all(),
+            ]);
+
+            $message = config('app.debug') ? $e->getMessage() : 'Máy chủ gặp lỗi khi xử lý đăng ký. Vui lòng thử lại sau.';
+
             return response()->json([
                 'success' => false,
-                'message' => 'Không thể gửi email. Vui lòng thử lại sau.',
-                'error' => $e->getMessage(),
+                'message' => $message,
             ], 500);
         }
     }
@@ -203,11 +210,17 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Mã OTP mới đã được gửi đến email của bạn.',
             ], 200);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Log::error('Resend OTP error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'input' => $request->all(),
+            ]);
+
+            $message = config('app.debug') ? $e->getMessage() : 'Máy chủ gặp lỗi khi gửi mã OTP. Vui lòng thử lại sau.';
+
             return response()->json([
                 'success' => false,
-                'message' => 'Không thể gửi email. Vui lòng thử lại sau.',
-                'error' => $e->getMessage(),
+                'message' => $message,
             ], 500);
         }
     }
