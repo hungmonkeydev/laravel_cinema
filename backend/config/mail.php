@@ -25,9 +25,9 @@ return [
     'mailers' => [
         'smtp' => [
             'transport' => 'smtp',
-            'host' => env('MAIL_HOST', 'smtp.gmail.com'), // Thay mailgun thành gmail làm mặc định
-            'port' => env('MAIL_PORT', 465),            // Sửa port mặc định thành 465
-            'encryption' => env('MAIL_ENCRYPTION', 'ssl'), // Sửa mã hóa mặc định thành ssl
+            'host' => env('MAIL_HOST', 'smtp.sendgrid.net'), // Thay mailgun thành gmail làm mặc định
+            'port' => env('MAIL_PORT', 587),            // Sửa port mặc định thành 465
+            'encryption' => env('MAIL_ENCRYPTION', 'tls'), // Sửa mã hóa mặc định thành ssl
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
@@ -91,8 +91,8 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', 'Example'),
+        'address' => env('MAIL_FROM_ADDRESS', 'hung01634@gmail.com'),
+        'name' => env('MAIL_FROM_NAME', 'Viecinema'),
     ],
 
     /*

@@ -50,8 +50,15 @@ class EmailVerification extends Model
             'expires_at' => now()->addMinutes(10),
         ]);
 
-        // Send email
-        Mail::to($email)->send(new OtpMail($otp));
+        // Send email with better error handling
+        try {
+            Mail::to($email)->send(new OtpMail($otp));
+            \Log::info("OTP sent successfully to: $email");
+        } catch (\Exception $e) {
+            \Log::error("Failed to send OTP email: " . $e->getMessage());
+            \Log::error("Stack trace: " . $e->getTraceAsString());
+            throw $e; // Re-throw để AuthController bắt được
+        }
 
         return $verification;
     }
