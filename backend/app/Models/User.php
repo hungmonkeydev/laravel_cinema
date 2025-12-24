@@ -24,11 +24,16 @@ class User extends Authenticatable
     protected $fillable = [
         'full_name',
         'email',
+        'password',
         'phone',
         'role',
-        'is_active',
-        'password',       // Để nhận dữ liệu từ Controller
-        'password_hash',  // Để lưu vào Database
+        'email_verified_at',
+        // --- THÊM CÁC DÒNG NÀY ---
+        'provider',
+        'provider_id',
+        'provider_token',
+        'provider_refresh_token',
+        'provider_avatar_url',
     ];
 
     /**

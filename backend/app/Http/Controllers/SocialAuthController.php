@@ -7,94 +7,62 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
+use Illuminate\Support\Str; // <--- QUAN TRỌNG: Phải có dòng này mới dùng được Str::random
 
 class SocialAuthController extends Controller
 {
-    /**
-     * Redirect to Google OAuth consent screen
-     */
     public function redirectToGoogle()
     {
         return Socialite::driver('google')->stateless()->redirect();
     }
 
-    /**
-     * Handle Google OAuth callback
-     */
     public function handleGoogleCallback()
     {
         try {
             $googleUser = Socialite::driver('google')->stateless()->user();
+            
+            // Tìm user theo Google ID trước
+            $user = User::where('provider_id', $googleUser->getId())->first();
 
-            Log::info('Google OAuth user data', [
-                'google_id' => $googleUser->getId(),
-                'email' => $googleUser->getEmail(),
-                'name' => $googleUser->getName(),
-            ]);
-
-            // Check if user exists with this Google ID
-            $user = User::where('provider', 'google')
-                        ->where('provider_id', $googleUser->getId())
-                        ->first();
-
+            // Nếu không thấy thì tìm theo Email
             if (!$user) {
-                // Check if user exists with same email (auto-link)
                 $user = User::where('email', $googleUser->getEmail())->first();
-
+                
                 if ($user) {
-                    Log::info('Linking Google to existing user', ['user_id' => $user->user_id, 'email' => $user->email]);
-
-                    // Link Google to existing account
-                    $user->provider = 'google';
-                    $user->provider_id = $googleUser->getId();
-                    $user->provider_token = $googleUser->token;
-                    $user->provider_refresh_token = $googleUser->refreshToken;
-                    $user->provider_avatar_url = $googleUser->getAvatar();
-                    $user->email_verified_at = now();
-                    $user->save();
+                    // Đã có user (đăng ký thường), giờ cập nhật thêm Google ID vào
+                    $user->update([
+                        'provider' => 'google',
+                        'provider_id' => $googleUser->getId(),
+                        'provider_avatar_url' => $googleUser->getAvatar(),
+                    ]);
                 } else {
-                    Log::info('Creating new user from Google OAuth');
-
-                    // Create new user
+                    // Chưa có ai -> Tạo mới hoàn toàn
                     $user = User::create([
                         'full_name' => $googleUser->getName(),
                         'email' => $googleUser->getEmail(),
+                        'password' => bcrypt(Str::random(16)), // Random pass
+                        'role' => 'customer',
+                        'email_verified_at' => now(),
                         'provider' => 'google',
                         'provider_id' => $googleUser->getId(),
-                        'provider_token' => $googleUser->token,
-                        'provider_refresh_token' => $googleUser->refreshToken,
                         'provider_avatar_url' => $googleUser->getAvatar(),
-                        'email_verified_at' => now(),
-                        'role' => 'customer',
-                        'password' => bcrypt(Str::random(16)),
                     ]);
-
-                    Log::info('New user created', ['user_id' => $user->user_id]);
                 }
-            } else {
-                Log::info('Updating existing OAuth user', ['user_id' => $user->user_id]);
-
-                // Update existing OAuth user tokens
-                $user->provider_token = $googleUser->token;
-                $user->provider_refresh_token = $googleUser->refreshToken;
-                $user->provider_avatar_url = $googleUser->getAvatar();
-                $user->save();
             }
 
-            // Log in the user
+            // Đăng nhập
             Auth::login($user);
+            $token = $user->createToken('google-auth-token')->plainTextToken;
 
-            // Create Sanctum token for API authentication
-            $token = $user->createToken('oauth-login')->plainTextToken;
+            // Lấy URL frontend từ biến môi trường (Mặc định Railway)
+            $frontendUrl = env('FRONTEND_URL', 'https://frontend-laravel-production.up.railway.app');
 
-            // Redirect to frontend with token
-            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
-            return redirect()->to("{$frontendUrl}/auth/callback?login=success&token={$token}");
+            return redirect()->to("$frontendUrl/auth/callback?login=success&token=$token");
 
-        } catch (\Exception $e) {
-            Log::error('Google OAuth error: ' . $e->getMessage());
-            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
-            return redirect()->to("{$frontendUrl}/?login=error&message=" . urlencode($e->getMessage()));
+        } catch (\Throwable $e) {
+            Log::error('Google Login Error: ' . $e->getMessage());
+            $frontendUrl = env('FRONTEND_URL', 'https://frontend-laravel-production.up.railway.app');
+            return redirect()->to("$frontendUrl/auth/callback?login=error&message=" . urlencode("Lỗi đăng nhập Google"));
         }
     }
 }
