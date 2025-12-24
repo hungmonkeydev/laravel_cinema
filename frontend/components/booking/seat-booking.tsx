@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react"; // <--- Nhớ import useEffect
+import { useState, useEffect } from "react";
 import { ChevronLeft, CreditCard, Loader2, Clock } from "lucide-react";
+import { useRouter } from "next/navigation"; // <--- 1. Import useRouter
 
 interface BookingMovie {
   id: number;
@@ -28,42 +29,32 @@ export default function SeatBooking({
   cinema,
   onBack,
 }: SeatBookingProps) {
+  const router = useRouter(); // <--- 2. Khởi tạo router
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
-
-  // State lưu danh sách giờ lấy từ API
   const [showtimes, setShowtimes] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState<string>("");
-
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isLoadingTime, setIsLoadingTime] = useState(true); // Biến để hiện loading khi đang tải giờ
+  const [isLoadingTime, setIsLoadingTime] = useState(true);
 
-  // --- GỌI API LẤY GIỜ CHIẾU TỪ BACKEND ---
+  // --- GỌI API LẤY GIỜ CHIẾU ---
   useEffect(() => {
     const fetchShowtimes = async () => {
       setIsLoadingTime(true);
       try {
-        // Gọi API Laravel mà bạn vừa tạo
-        // encodeURIComponent(cinema) để xử lý tên rạp có dấu/khoảng trắng
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/showtimes?movie_id=${
             movie.id
           }&cinema=${encodeURIComponent(cinema)}`
         );
-
         if (!res.ok) throw new Error("Lỗi kết nối");
-
         const data = await res.json();
-
         if (Array.isArray(data)) {
           setShowtimes(data);
-          // Mặc định chọn giờ đầu tiên nếu có
-          if (data.length > 0) {
-            setSelectedTime(data[0]);
-          }
+          if (data.length > 0) setSelectedTime(data[0]);
         }
       } catch (error) {
         console.error("Lỗi lấy suất chiếu:", error);
-        setShowtimes([]); // Nếu lỗi thì reset về rỗng
+        setShowtimes([]);
       } finally {
         setIsLoadingTime(false);
       }
@@ -87,15 +78,38 @@ export default function SeatBooking({
     }
   };
 
+  // --- HÀM THANH TOÁN ĐÃ SỬA ---
   const handleVNPayPayment = async () => {
+    // 1. Kiểm tra đăng nhập
+    // (Giả sử bạn lưu token trong localStorage với key là "access_token" hoặc "auth_token")
+    // Bạn hãy đổi tên key cho đúng với code login của bạn
+    const token = localStorage.getItem("access_token");
+
+    if (!token) {
+      // Nếu không có token -> Thông báo và chuyển hướng
+      const confirmLogin = window.confirm(
+        "Bạn cần đăng nhập để thực hiện thanh toán. Đi đến trang đăng nhập ngay?"
+      );
+      if (confirmLogin) {
+        // Chuyển hướng đến trang login (bạn có thể đổi đường dẫn '/login' cho đúng)
+        router.push("/login"); 
+      }
+      return; // Dừng hàm lại, không chạy code bên dưới
+    }
+
     if (selectedSeats.length === 0) return;
+    
     setIsProcessing(true);
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/vnpay_payment`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            // 2. Quan trọng: Gửi kèm Token để Backend biết ai đang thanh toán
+            "Authorization": `Bearer ${token}` 
+          },
           body: JSON.stringify({
             order_total: totalPrice,
             order_desc: `Vé ${movie.title} - ${selectedTime} - ${cinema}`,
@@ -107,6 +121,15 @@ export default function SeatBooking({
           }),
         }
       );
+      
+      // Xử lý trường hợp token hết hạn (Backend trả về 401)
+      if (response.status === 401) {
+          alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+          localStorage.removeItem("access_token"); // Xóa token cũ
+          router.push("/login");
+          return;
+      }
+
       const data = await response.json();
       if (data.code === "00" && data.data) {
         window.location.href = data.data;
@@ -142,7 +165,7 @@ export default function SeatBooking({
         </div>
       </div>
 
-      {/* BODY */}
+      {/* BODY - Phần này giữ nguyên code cũ của bạn */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-8 bg-accent/5 scroll-smooth">
         {/* --- PHẦN CHỌN GIỜ CHIẾU --- */}
         <div className="mb-8">
@@ -180,7 +203,7 @@ export default function SeatBooking({
           )}
         </div>
 
-        {/* Màn hình chiếu (Giữ nguyên) */}
+        {/* Màn hình chiếu */}
         <div className="mb-10 text-center relative">
           <div className="h-1.5 w-2/3 bg-primary mx-auto rounded-full shadow-[0_5px_20px_rgba(var(--primary),0.5)] mb-3"></div>
           <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
@@ -189,7 +212,7 @@ export default function SeatBooking({
           <div className="absolute top-2 left-1/2 -translate-x-1/2 w-1/2 h-16 bg-gradient-to-b from-primary/10 to-transparent -z-10 blur-xl"></div>
         </div>
 
-        {/* Lưới ghế (Giữ nguyên) */}
+        {/* Lưới ghế */}
         <div className="flex justify-center mb-8 overflow-x-auto py-4 px-2">
           <div className="grid gap-2 md:gap-3">
             {ROWS.map((row) => (
@@ -225,7 +248,7 @@ export default function SeatBooking({
           </div>
         </div>
 
-        {/* Chú thích ghế (Giữ nguyên) */}
+        {/* Chú thích ghế */}
         <div className="flex justify-center flex-wrap gap-4 text-xs text-muted-foreground pb-4">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded border border-border bg-background"></div>
@@ -264,7 +287,6 @@ export default function SeatBooking({
 
         <button
           onClick={handleVNPayPayment}
-          // 🔥 Disable nút thanh toán nếu chưa có giờ chiếu hoặc chưa chọn ghế
           disabled={selectedSeats.length === 0 || isProcessing || !selectedTime}
           className={`
             w-full py-3.5 rounded-xl font-bold text-base md:text-lg flex items-center justify-center gap-2 shadow-lg transition-all
