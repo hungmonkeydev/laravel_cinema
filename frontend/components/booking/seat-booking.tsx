@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react"; // <--- Nhớ import useEffect
 import { ChevronLeft, CreditCard, Loader2, Clock } from "lucide-react";
-import { useRouter } from "next/navigation"; // 1. Import router để chuyển trang
 
 interface BookingMovie {
   id: number;
@@ -29,7 +28,6 @@ export default function SeatBooking({
   cinema,
   onBack,
 }: SeatBookingProps) {
-  const router = useRouter(); // 2. Khởi tạo router
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
 
   // State lưu danh sách giờ lấy từ API
@@ -37,13 +35,15 @@ export default function SeatBooking({
   const [selectedTime, setSelectedTime] = useState<string>("");
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isLoadingTime, setIsLoadingTime] = useState(true);
+  const [isLoadingTime, setIsLoadingTime] = useState(true); // Biến để hiện loading khi đang tải giờ
 
   // --- GỌI API LẤY GIỜ CHIẾU TỪ BACKEND ---
   useEffect(() => {
     const fetchShowtimes = async () => {
       setIsLoadingTime(true);
       try {
+        // Gọi API Laravel mà bạn vừa tạo
+        // encodeURIComponent(cinema) để xử lý tên rạp có dấu/khoảng trắng
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/showtimes?movie_id=${
             movie.id
@@ -63,7 +63,7 @@ export default function SeatBooking({
         }
       } catch (error) {
         console.error("Lỗi lấy suất chiếu:", error);
-        setShowtimes([]);
+        setShowtimes([]); // Nếu lỗi thì reset về rỗng
       } finally {
         setIsLoadingTime(false);
       }
@@ -87,39 +87,15 @@ export default function SeatBooking({
     }
   };
 
-  // --- HÀM THANH TOÁN (ĐÃ SỬA LOGIC CHECK LOGIN) ---
   const handleVNPayPayment = async () => {
-    // 1. Kiểm tra Token trong localStorage
-    // QUAN TRỌNG: Hãy đảm bảo bên trang Login bạn lưu key tên là "access_token"
-    // Nếu bên Login bạn lưu là "token" thì sửa dòng dưới thành .getItem("token")
-    const token = localStorage.getItem("access_token");
-
-    console.log("Debug Token:", token); // Log ra để kiểm tra xem có token hay không
-
-    if (!token) {
-      // Nếu không có token -> Hiển thị thông báo và chuyển hướng
-      const confirmLogin = window.confirm(
-        "Bạn cần đăng nhập để thực hiện thanh toán. Đi đến trang đăng nhập ngay?"
-      );
-      if (confirmLogin) {
-        router.push("/login"); // Chuyển hướng về trang đăng nhập
-      }
-      return; // Dừng hàm lại ngay lập tức
-    }
-
     if (selectedSeats.length === 0) return;
-
     setIsProcessing(true);
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/vnpay_payment`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            // 2. Gửi kèm Token để Backend xác thực
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             order_total: totalPrice,
             order_desc: `Vé ${movie.title} - ${selectedTime} - ${cinema}`,
@@ -131,24 +107,15 @@ export default function SeatBooking({
           }),
         }
       );
-
-      // Xử lý trường hợp token hết hạn (Backend trả về 401 Unauthorized)
-      if (response.status === 401) {
-        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-        localStorage.removeItem("access_token"); // Xóa token cũ đi
-        router.push("/login");
-        return;
-      }
-
       const data = await response.json();
       if (data.code === "00" && data.data) {
-        window.location.href = data.data; // Chuyển hướng sang VNPay
+        window.location.href = data.data;
       } else {
         alert("Lỗi tạo thanh toán: " + (data.message || "Không xác định"));
       }
     } catch (error) {
       console.error("Payment Error:", error);
-      alert("Không thể kết nối đến server thanh toán, vui lòng đăng nhập!.");
+      alert("Không thể kết nối đến server thanh toán.");
     } finally {
       setIsProcessing(false);
     }
@@ -213,7 +180,7 @@ export default function SeatBooking({
           )}
         </div>
 
-        {/* Màn hình chiếu */}
+        {/* Màn hình chiếu (Giữ nguyên) */}
         <div className="mb-10 text-center relative">
           <div className="h-1.5 w-2/3 bg-primary mx-auto rounded-full shadow-[0_5px_20px_rgba(var(--primary),0.5)] mb-3"></div>
           <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
@@ -222,7 +189,7 @@ export default function SeatBooking({
           <div className="absolute top-2 left-1/2 -translate-x-1/2 w-1/2 h-16 bg-gradient-to-b from-primary/10 to-transparent -z-10 blur-xl"></div>
         </div>
 
-        {/* Lưới ghế */}
+        {/* Lưới ghế (Giữ nguyên) */}
         <div className="flex justify-center mb-8 overflow-x-auto py-4 px-2">
           <div className="grid gap-2 md:gap-3">
             {ROWS.map((row) => (
@@ -258,7 +225,7 @@ export default function SeatBooking({
           </div>
         </div>
 
-        {/* Chú thích ghế */}
+        {/* Chú thích ghế (Giữ nguyên) */}
         <div className="flex justify-center flex-wrap gap-4 text-xs text-muted-foreground pb-4">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded border border-border bg-background"></div>
@@ -297,6 +264,7 @@ export default function SeatBooking({
 
         <button
           onClick={handleVNPayPayment}
+          // 🔥 Disable nút thanh toán nếu chưa có giờ chiếu hoặc chưa chọn ghế
           disabled={selectedSeats.length === 0 || isProcessing || !selectedTime}
           className={`
             w-full py-3.5 rounded-xl font-bold text-base md:text-lg flex items-center justify-center gap-2 shadow-lg transition-all
