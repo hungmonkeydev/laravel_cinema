@@ -108,17 +108,17 @@ export default function SeatBooking({
     }
 
     if (selectedSeats.length === 0) return;
-    
+
     setIsProcessing(true);
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/vnpay_payment`,
         {
           method: "POST",
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             // 2. Gửi kèm Token để Backend xác thực
-            "Authorization": `Bearer ${token}` 
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             order_total: totalPrice,
@@ -131,13 +131,13 @@ export default function SeatBooking({
           }),
         }
       );
-      
+
       // Xử lý trường hợp token hết hạn (Backend trả về 401 Unauthorized)
       if (response.status === 401) {
-          alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-          localStorage.removeItem("access_token"); // Xóa token cũ đi
-          router.push("/login");
-          return;
+        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        localStorage.removeItem("access_token"); // Xóa token cũ đi
+        router.push("/login");
+        return;
       }
 
       const data = await response.json();
@@ -148,7 +148,7 @@ export default function SeatBooking({
       }
     } catch (error) {
       console.error("Payment Error:", error);
-      alert("Không thể kết nối đến server thanh toán.");
+      alert("Không thể kết nối đến server thanh toán, vui lòng đăng nhập!.");
     } finally {
       setIsProcessing(false);
     }
