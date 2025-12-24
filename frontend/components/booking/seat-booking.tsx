@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ChevronLeft, CreditCard, Loader2, Clock } from "lucide-react";
-import { useRouter } from "next/navigation"; // <--- 1. Import useRouter
+import { useRouter } from "next/navigation"; // 1. Import router để chuyển trang
 
 interface BookingMovie {
   id: number;
@@ -29,14 +29,17 @@ export default function SeatBooking({
   cinema,
   onBack,
 }: SeatBookingProps) {
-  const router = useRouter(); // <--- 2. Khởi tạo router
+  const router = useRouter(); // 2. Khởi tạo router
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+
+  // State lưu danh sách giờ lấy từ API
   const [showtimes, setShowtimes] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState<string>("");
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingTime, setIsLoadingTime] = useState(true);
 
-  // --- GỌI API LẤY GIỜ CHIẾU ---
+  // --- GỌI API LẤY GIỜ CHIẾU TỪ BACKEND ---
   useEffect(() => {
     const fetchShowtimes = async () => {
       setIsLoadingTime(true);
@@ -46,11 +49,17 @@ export default function SeatBooking({
             movie.id
           }&cinema=${encodeURIComponent(cinema)}`
         );
+
         if (!res.ok) throw new Error("Lỗi kết nối");
+
         const data = await res.json();
+
         if (Array.isArray(data)) {
           setShowtimes(data);
-          if (data.length > 0) setSelectedTime(data[0]);
+          // Mặc định chọn giờ đầu tiên nếu có
+          if (data.length > 0) {
+            setSelectedTime(data[0]);
+          }
         }
       } catch (error) {
         console.error("Lỗi lấy suất chiếu:", error);
@@ -78,23 +87,24 @@ export default function SeatBooking({
     }
   };
 
-  // --- HÀM THANH TOÁN ĐÃ SỬA ---
+  // --- HÀM THANH TOÁN (ĐÃ SỬA LOGIC CHECK LOGIN) ---
   const handleVNPayPayment = async () => {
-    // 1. Kiểm tra đăng nhập
-    // (Giả sử bạn lưu token trong localStorage với key là "access_token" hoặc "auth_token")
-    // Bạn hãy đổi tên key cho đúng với code login của bạn
+    // 1. Kiểm tra Token trong localStorage
+    // QUAN TRỌNG: Hãy đảm bảo bên trang Login bạn lưu key tên là "access_token"
+    // Nếu bên Login bạn lưu là "token" thì sửa dòng dưới thành .getItem("token")
     const token = localStorage.getItem("access_token");
 
+    console.log("Debug Token:", token); // Log ra để kiểm tra xem có token hay không
+
     if (!token) {
-      // Nếu không có token -> Thông báo và chuyển hướng
+      // Nếu không có token -> Hiển thị thông báo và chuyển hướng
       const confirmLogin = window.confirm(
         "Bạn cần đăng nhập để thực hiện thanh toán. Đi đến trang đăng nhập ngay?"
       );
       if (confirmLogin) {
-        // Chuyển hướng đến trang login (bạn có thể đổi đường dẫn '/login' cho đúng)
-        router.push("/login"); 
+        router.push("/login"); // Chuyển hướng về trang đăng nhập
       }
-      return; // Dừng hàm lại, không chạy code bên dưới
+      return; // Dừng hàm lại ngay lập tức
     }
 
     if (selectedSeats.length === 0) return;
@@ -107,7 +117,7 @@ export default function SeatBooking({
           method: "POST",
           headers: { 
             "Content-Type": "application/json",
-            // 2. Quan trọng: Gửi kèm Token để Backend biết ai đang thanh toán
+            // 2. Gửi kèm Token để Backend xác thực
             "Authorization": `Bearer ${token}` 
           },
           body: JSON.stringify({
@@ -122,17 +132,17 @@ export default function SeatBooking({
         }
       );
       
-      // Xử lý trường hợp token hết hạn (Backend trả về 401)
+      // Xử lý trường hợp token hết hạn (Backend trả về 401 Unauthorized)
       if (response.status === 401) {
           alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-          localStorage.removeItem("access_token"); // Xóa token cũ
+          localStorage.removeItem("access_token"); // Xóa token cũ đi
           router.push("/login");
           return;
       }
 
       const data = await response.json();
       if (data.code === "00" && data.data) {
-        window.location.href = data.data;
+        window.location.href = data.data; // Chuyển hướng sang VNPay
       } else {
         alert("Lỗi tạo thanh toán: " + (data.message || "Không xác định"));
       }
@@ -165,7 +175,7 @@ export default function SeatBooking({
         </div>
       </div>
 
-      {/* BODY - Phần này giữ nguyên code cũ của bạn */}
+      {/* BODY */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-8 bg-accent/5 scroll-smooth">
         {/* --- PHẦN CHỌN GIỜ CHIẾU --- */}
         <div className="mb-8">
