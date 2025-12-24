@@ -66,6 +66,7 @@ class SocialAuthController extends Controller
                         'provider_avatar_url' => $googleUser->getAvatar(),
                         'email_verified_at' => now(),
                         'role' => 'customer',
+                        'password' => bcrypt(Str::random(16)),
                     ]);
 
                     Log::info('New user created', ['user_id' => $user->user_id]);

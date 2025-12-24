@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Artisan; // <-- Thêm dòng này để dùng lệnh Artisan
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\SocialAuthController;
 // Route mặc định trang chủ
 Route::get('/', function () {
     return view('welcome');
@@ -35,7 +35,5 @@ Route::get('/check-mail-config', function () {
     ];
 });
 // 1. Route chuyển hướng sang Google
-Route::get('/google/redirect', [AuthController::class, 'redirectToGoogle'])->name('google.redirect');
-
-// 2. Route nhận kết quả từ Google (Cái này đang bị lỗi 404 vì thiếu)
-Route::get('/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('google.callback');
+Route::get('/google/redirect', [SocialAuthController::class, 'redirectToGoogle'])->name('google.redirect');
+Route::get('/google/callback', [SocialAuthController::class, 'handleGoogleCallback'])->name('google.callback');
