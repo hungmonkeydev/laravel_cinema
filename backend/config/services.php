@@ -36,9 +36,9 @@ return [
     ],
 
     'google' => [
-        'client_id' => env('185486726358-rmgdif7i1upk3b737eh1ka34ndm46lnr.apps.googleusercontent.com'),
-        'client_secret' => env('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'),
-        'redirect' => env('APP_URL') . '/api/auth/google/callback',
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
 
         // THÊM DÒNG NÀY ĐỂ TẮT CHECK SSL CHO GOOGLE
         'guzzle' => [
