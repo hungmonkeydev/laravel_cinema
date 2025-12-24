@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Http\Controllers\GoogleController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -62,7 +63,7 @@ class AuthController extends Controller
             ], 200);
 
         } catch (\Throwable $e) {
-            \Log::error('Register error: ' . $e->getMessage());
+            Log::error('Register error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Lỗi server: ' . $e->getMessage(),
