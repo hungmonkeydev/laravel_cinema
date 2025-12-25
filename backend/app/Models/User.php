@@ -11,14 +11,15 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected $table = 'users'; // Đảm bảo trỏ đúng bảng
+    protected $table = 'users';
     protected $primaryKey = 'user_id';
 
     protected $fillable = [
         'full_name',
         'email',
         'phone',
-        'password_hash', // Đổi từ password thành password_hash cho khớp DB
+        'password', // THÊM DÒNG NÀY: Để nhận dữ liệu từ Controller
+        'password_hash',
         'role',
         'provider',
         'provider_id',
@@ -33,18 +34,21 @@ class User extends Authenticatable
     ];
 
     protected $casts = [
-        // XÓA DÒNG email_verified_at Ở ĐÂY
+        // Không cần email_verified_at ở đây vì DB không có
         'password_hash' => 'hashed',
     ];
 
-    // Chỉ định cho Laravel biết cột mật khẩu tên là gì
+    /**
+     * Chỉ định cho Laravel biết cột chứa mật khẩu đã mã hóa là password_hash
+     */
     public function getAuthPassword()
     {
         return $this->password_hash;
     }
 
-    // Nếu bạn muốn dùng User::create(['password' => '...']) thì dùng hàm này
-    // Nhưng hãy chắc chắn trong Controller bạn KHÔNG gửi 'email_verified_at' đi kèm
+    /**
+     * Mutator: Khi Controller gửi 'password', nó sẽ tự mã hóa và lưu vào 'password_hash'
+     */
     public function setPasswordAttribute($value)
     {
         if (!empty($value)) {
