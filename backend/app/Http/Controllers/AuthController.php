@@ -43,7 +43,7 @@ class AuthController extends Controller
                 'phone' => $request->phone,
                 'password' => $request->password, // <-- Quan trọng: Gửi raw text, Model sẽ tự Hash
                 'role' => 'customer',
-                'email_verified_at' => now(), 
+                // 'email_verified_at' => now(), 
             ]);
 
             // Tự động đăng nhập
@@ -145,7 +145,7 @@ class AuthController extends Controller
                     'email' => $googleUser->getEmail(),
                     'password' => Str::random(16), // Model tự mã hóa
                     'role' => 'customer',
-                    'email_verified_at' => now(),
+                    // 'email_verified_at' => now(),
                 ]);
             }
 
